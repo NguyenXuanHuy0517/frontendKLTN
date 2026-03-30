@@ -8,10 +8,12 @@ class ApiClient {
   static ApiClient? _instance;
   late final Dio _authDio;
   late final Dio _hostDio;
+  late final Dio _tenantDio;
 
   ApiClient._() {
-    _authDio = _createDio(ApiConstants.baseAuthUrl);
-    _hostDio = _createDio(ApiConstants.baseHostUrl);
+    _authDio   = _createDio(ApiConstants.baseAuthUrl);
+    _hostDio   = _createDio(ApiConstants.baseHostUrl);
+    _tenantDio = _createDio(ApiConstants.baseTenantUrl);
   }
 
   static ApiClient get instance {
@@ -19,8 +21,9 @@ class ApiClient {
     return _instance!;
   }
 
-  Dio get authDio => _authDio;
-  Dio get hostDio => _hostDio;
+  Dio get authDio   => _authDio;
+  Dio get hostDio   => _hostDio;
+  Dio get tenantDio => _tenantDio;
 
   Dio _createDio(String baseUrl) {
     final dio = Dio(BaseOptions(

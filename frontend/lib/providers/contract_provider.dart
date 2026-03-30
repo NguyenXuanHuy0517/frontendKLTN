@@ -1,6 +1,8 @@
-import  'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../data/models/contract_model.dart';
 import '../data/services/contract_service.dart';
+import '../data/services/api_client.dart';
+import '../core/constants/api_constants.dart';
 
 class ContractProvider extends ChangeNotifier {
   final _service = ContractService();
@@ -17,6 +19,17 @@ class ContractProvider extends ChangeNotifier {
 
   List<ContractModel> get activeContracts =>
       _contracts.where((c) => c.status == 'ACTIVE').toList();
+
+  /// Hợp đồng ACTIVE hiện tại (dùng cho tenant dashboard)
+  ContractModel? get currentContract {
+    try {
+      return _contracts.firstWhere((c) => c.status == 'ACTIVE');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── HOST methods ─────────────────────────────────────────
 
   Future<void> fetchContracts(int hostId) async {
     _loading = true;
@@ -84,6 +97,30 @@ class ContractProvider extends ChangeNotifier {
       _error = 'Chấm dứt hợp đồng thất bại';
       notifyListeners();
       return false;
+    }
+  }
+
+  // ── TENANT methods ────────────────────────────────────────
+
+  /// Lấy danh sách hợp đồng của người thuê (tenant-service)
+  Future<void> fetchContractsByTenant(int userId) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final res = await ApiClient.instance.tenantDio.get(
+        ApiConstants.tenantContracts,
+        queryParameters: {'userId': userId},
+      );
+      // tenant-service trả về MyContractDTO, map sang ContractModel
+      _contracts = (res.data['data'] as List)
+          .map((e) => ContractModel.fromTenantJson(e))
+          .toList();
+    } catch (e) {
+      _error = 'Không tải được danh sách hợp đồng';
+    } finally {
+      _loading = false;
+      notifyListeners();
     }
   }
 }

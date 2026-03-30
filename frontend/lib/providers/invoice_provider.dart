@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../data/models/invoice_model.dart';
 import '../data/services/invoice_service.dart';
+import '../data/services/api_client.dart';
+import '../core/constants/api_constants.dart';
 
 class InvoiceProvider extends ChangeNotifier {
   final _service = InvoiceService();
@@ -19,6 +21,8 @@ class InvoiceProvider extends ChangeNotifier {
       _invoices.where((i) => i.status == 'UNPAID').toList();
   List<InvoiceModel> get overdueInvoices =>
       _invoices.where((i) => i.status == 'OVERDUE').toList();
+
+  // ── HOST methods ─────────────────────────────────────────
 
   Future<void> fetchInvoices(int hostId) async {
     _loading = true;
@@ -70,6 +74,44 @@ class InvoiceProvider extends ChangeNotifier {
       _error = 'Xác nhận thanh toán thất bại';
       notifyListeners();
       return false;
+    }
+  }
+
+  // ── TENANT methods ────────────────────────────────────────
+
+  /// Lấy danh sách hóa đơn của người thuê (tenant-service)
+  Future<void> fetchInvoicesByTenant(int userId) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final res = await ApiClient.instance.tenantDio.get(
+        ApiConstants.tenantInvoices,
+        queryParameters: {'userId': userId},
+      );
+      _invoices = (res.data['data'] as List)
+          .map((e) => InvoiceModel.fromJson(e))
+          .toList();
+    } catch (e) {
+      _error = 'Không tải được danh sách hóa đơn';
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Xem chi tiết hóa đơn (tenant-service)
+  Future<void> fetchInvoiceDetailByTenant(int invoiceId, int userId) async {
+    try {
+      final res = await ApiClient.instance.tenantDio.get(
+        '${ApiConstants.tenantInvoices}/$invoiceId',
+        queryParameters: {'userId': userId},
+      );
+      _selected = InvoiceDetailModel.fromJson(res.data['data']);
+      notifyListeners();
+    } catch (e) {
+      _error = 'Không tải được chi tiết hóa đơn';
+      notifyListeners();
     }
   }
 }

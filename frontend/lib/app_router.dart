@@ -24,6 +24,17 @@ import 'presentation/host/invoice/invoice_detail_screen.dart';
 import 'presentation/host/issue/issue_list_screen.dart';
 import 'presentation/host/issue/issue_detail_screen.dart';
 
+// Tenant
+import 'presentation/tenant/dashboard/tenant_dashboard_screen.dart';
+import 'presentation/tenant/invoice/tenant_invoice_list_screen.dart';
+import 'presentation/tenant/invoice/tenant_invoice_detail_screen.dart';
+import 'presentation/tenant/issue/tenant_issue_list_screen.dart';
+import 'presentation/tenant/issue/tenant_issue_detail_screen.dart';
+import 'presentation/tenant/contract/tenant_contract_screen.dart';
+import 'presentation/tenant/chatbot/tenant_chatbot_screen.dart';
+import 'presentation/tenant/profile/tenant_profile_screen.dart';
+import 'presentation/tenant/notification/tenant_notification_screen.dart';
+
 class AppRouter {
   static final _authService = AuthService();
 
@@ -31,11 +42,17 @@ class AppRouter {
     initialLocation: '/login',
     redirect: (context, state) async {
       final isLoggedIn = await _authService.isLoggedIn();
-      final isAuthRoute = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
+      final loc = state.matchedLocation;
+      final isAuthRoute = loc == '/login' || loc == '/register';
 
       if (!isLoggedIn && !isAuthRoute) return '/login';
-      if (isLoggedIn && isAuthRoute) return '/host/dashboard';
+
+      if (isLoggedIn && isAuthRoute) {
+        // Route theo role
+        final role = await _authService.getRole();
+        if (role == 'TENANT') return '/tenant/dashboard';
+        return '/host/dashboard';
+      }
       return null;
     },
     routes: [
@@ -49,13 +66,16 @@ class AppRouter {
         builder: (_, __) => const RegisterScreen(),
       ),
 
-      // ── Dashboard ─────────────────────────────────────
+      // ──────────────────────────────────────────────────
+      // HOST ROUTES
+      // ──────────────────────────────────────────────────
+
       GoRoute(
         path: '/host/dashboard',
         builder: (_, __) => const DashboardScreen(),
       ),
 
-      // ── Areas ─────────────────────────────────────────
+      // Areas
       GoRoute(
         path: '/host/areas',
         builder: (_, __) => const AreaListScreen(),
@@ -71,7 +91,7 @@ class AppRouter {
         ),
       ),
 
-      // ── Rooms ─────────────────────────────────────────
+      // Rooms
       GoRoute(
         path: '/host/rooms',
         builder: (_, __) => const RoomListScreen(),
@@ -93,7 +113,7 @@ class AppRouter {
         ),
       ),
 
-      // ── Tenants ───────────────────────────────────────
+      // Tenants
       GoRoute(
         path: '/host/tenants',
         builder: (_, __) => const TenantListScreen(),
@@ -109,13 +129,13 @@ class AppRouter {
         ),
       ),
 
-      // ── Deposits ──────────────────────────────────────
+      // Deposits
       GoRoute(
         path: '/host/deposits',
         builder: (_, __) => const DepositListScreen(),
       ),
 
-      // ── Contracts ─────────────────────────────────────
+      // Contracts
       GoRoute(
         path: '/host/contracts',
         builder: (_, __) => const ContractListScreen(),
@@ -131,7 +151,7 @@ class AppRouter {
         ),
       ),
 
-      // ── Invoices ──────────────────────────────────────
+      // Invoices
       GoRoute(
         path: '/host/invoices',
         builder: (_, __) => const InvoiceListScreen(),
@@ -143,7 +163,7 @@ class AppRouter {
         ),
       ),
 
-      // ── Issues ────────────────────────────────────────
+      // Issues
       GoRoute(
         path: '/host/issues',
         builder: (_, __) => const IssueListScreen(),
@@ -153,6 +173,63 @@ class AppRouter {
         builder: (_, state) => IssueDetailScreen(
           issueId: int.parse(state.pathParameters['issueId']!),
         ),
+      ),
+
+      // ──────────────────────────────────────────────────
+      // TENANT ROUTES
+      // ──────────────────────────────────────────────────
+
+      GoRoute(
+        path: '/tenant/dashboard',
+        builder: (_, __) => const TenantDashboardScreen(),
+      ),
+
+      // Invoices
+      GoRoute(
+        path: '/tenant/invoices',
+        builder: (_, __) => const TenantInvoiceListScreen(),
+      ),
+      GoRoute(
+        path: '/tenant/invoices/:invoiceId',
+        builder: (_, state) => TenantInvoiceDetailScreen(
+          invoiceId: int.parse(state.pathParameters['invoiceId']!),
+        ),
+      ),
+
+      // Issues
+      GoRoute(
+        path: '/tenant/issues',
+        builder: (_, __) => const TenantIssueListScreen(),
+      ),
+      GoRoute(
+        path: '/tenant/issues/:issueId',
+        builder: (_, state) => TenantIssueDetailScreen(
+          issueId: int.parse(state.pathParameters['issueId']!),
+        ),
+      ),
+
+      // Contract
+      GoRoute(
+        path: '/tenant/contract',
+        builder: (_, __) => const TenantContractScreen(),
+      ),
+
+      // Chatbot
+      GoRoute(
+        path: '/tenant/chatbot',
+        builder: (_, __) => const TenantChatbotScreen(),
+      ),
+
+      // Profile
+      GoRoute(
+        path: '/tenant/profile',
+        builder: (_, __) => const TenantProfileScreen(),
+      ),
+
+      // Notifications
+      GoRoute(
+        path: '/tenant/notifications',
+        builder: (_, __) => const TenantNotificationScreen(),
       ),
     ],
 

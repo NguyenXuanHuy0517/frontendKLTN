@@ -27,6 +27,7 @@ class ContractModel {
     required this.serviceNames,
   });
 
+  /// Host-service response (ContractResponseDTO)
   factory ContractModel.fromJson(Map<String, dynamic> json) {
     return ContractModel(
       contractId: json['contractId'],
@@ -39,6 +40,24 @@ class ContractModel {
       actualRentPrice: (json['actualRentPrice'] ?? 0).toDouble(),
       elecPriceOverride: json['elecPriceOverride']?.toDouble(),
       waterPriceOverride: json['waterPriceOverride']?.toDouble(),
+      status: json['status'] ?? 'ACTIVE',
+      serviceNames: List<String>.from(json['serviceNames'] ?? []),
+    );
+  }
+
+  /// Tenant-service response (MyContractDTO)
+  factory ContractModel.fromTenantJson(Map<String, dynamic> json) {
+    return ContractModel(
+      contractId: json['contractId'],
+      contractCode: json['contractCode'] ?? '',
+      tenantName: '',                         // not returned by tenant-service
+      roomCode: json['roomCode'] ?? '',
+      areaName: json['areaName'] ?? '',
+      startDate: json['startDate'] ?? '',
+      endDate: json['endDate'] ?? '',
+      actualRentPrice: (json['actualRentPrice'] ?? 0).toDouble(),
+      elecPriceOverride: json['elecPrice']?.toDouble(),
+      waterPriceOverride: json['waterPrice']?.toDouble(),
       status: json['status'] ?? 'ACTIVE',
       serviceNames: List<String>.from(json['serviceNames'] ?? []),
     );

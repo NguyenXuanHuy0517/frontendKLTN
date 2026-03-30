@@ -3,21 +3,14 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class ApiConstants {
   ApiConstants._();
 
-  /// Tự động chọn host phù hợp theo nền tảng:
-  ///   - Web (browser)        → localhost
-  ///   - Android Emulator     → 10.0.2.2  (alias localhost của máy host)
-  ///   - iOS Simulator        → localhost
-  ///   - Thiết bị thật        → đổi thành IP LAN của máy chủ, VD: 192.168.1.x
   static String get _host {
     if (kIsWeb) return 'localhost';
-    // iOS Simulator cũng dùng localhost
-    // Android Emulator dùng 10.0.2.2
-    // Nếu test trên thiết bị thật: đổi thành IP máy chạy backend
     return '10.0.2.2';
   }
 
   static String get baseAuthUrl => 'http://$_host:8081';
   static String get baseHostUrl => 'http://$_host:8082';
+  static String get baseTenantUrl => 'http://$_host:8083';
 
   // Auth
   static const String login    = '/api/auth/login';
@@ -33,4 +26,12 @@ class ApiConstants {
   static const String invoices  = '/api/host/invoices';
   static const String issues    = '/api/host/issues';
   static const String reports   = '/api/host/reports/dashboard';
+
+  // Tenant
+  static const String tenantProfile       = '/api/tenant/profile';
+  static const String tenantContracts     = '/api/tenant/contracts';
+  static const String tenantInvoices      = '/api/tenant/invoices';
+  static const String tenantIssues        = '/api/tenant/issues';
+  static const String tenantNotifications = '/api/tenant/notifications';
+  static const String chatbot             = '/api/tenant/chatbot';
 }

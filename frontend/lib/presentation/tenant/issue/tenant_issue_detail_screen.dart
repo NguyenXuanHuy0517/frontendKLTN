@@ -1,0 +1,483 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/date_utils.dart';
+import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/app_loading.dart';
+import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/status_badge.dart';
+import '../../../data/models/issue_model.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/issue_provider.dart';
+
+class TenantIssueDetailScreen extends StatefulWidget {
+  final int issueId;
+  const TenantIssueDetailScreen({super.key, required this.issueId});
+  @override
+  State<TenantIssueDetailScreen> createState() =>
+      _TenantIssueDetailScreenState();
+}
+
+class _TenantIssueDetailScreenState
+    extends State<TenantIssueDetailScreen> {
+  final _feedbackCtrl = TextEditingController();
+  int _rating = 0;
+  bool _submitting = false;
+  bool _showRating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<IssueProvider>().fetchIssueDetail(widget.issueId);
+    });
+  }
+
+  @override
+  void dispose() {
+    _feedbackCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitRating() async {
+    if (_rating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng chọn số sao đánh giá'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      final userId = await context.read<AuthProvider>().getUserId();
+      await context.read<IssueProvider>().rateIssue(
+        issueId: widget.issueId,
+        userId: userId!,
+        rating: _rating,
+        feedback: _feedbackCtrl.text.trim().isEmpty
+            ? null
+            : _feedbackCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Đánh giá thành công! Cảm ơn bạn.'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      setState(() => _showRating = false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Color _priorityColor(String p) {
+    switch (p) {
+      case 'URGENT': return AppColors.error;
+      case 'HIGH':   return AppColors.warning;
+      case 'MEDIUM': return AppColors.info;
+      default:       return AppColors.invoiceDraft;
+    }
+  }
+
+  String _priorityLabel(String p) {
+    switch (p) {
+      case 'URGENT': return 'Khẩn cấp';
+      case 'HIGH':   return 'Cao';
+      case 'MEDIUM': return 'Trung bình';
+      default:       return 'Thấp';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark  = Theme.of(context).brightness == Brightness.dark;
+    final bg      = isDark ? AppColors.darkBg : AppColors.lightBg;
+    final fg      = isDark ? AppColors.darkFg : AppColors.lightFg;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final border  = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final issue   = context.watch<IssueProvider>().selected;
+
+    return Scaffold(
+      backgroundColor: bg,
+      appBar: AppBar(
+        backgroundColor: bg,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: fg, size: 20),
+          onPressed: () => context.pop(),
+        ),
+        title: Text('Chi tiết khiếu nại',
+            style: AppTextStyles.h3.copyWith(color: fg)),
+      ),
+      body: issue == null
+          ? const AppLoading()
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header banner ─────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _priorityColor(issue.priority).withOpacity(0.06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _priorityColor(issue.priority)
+                      .withOpacity(0.2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Expanded(
+                      child: Text(issue.title,
+                          style: AppTextStyles.h3
+                              .copyWith(color: fg)),
+                    ),
+                    StatusBadge(status: issue.status),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _priorityColor(issue.priority)
+                            .withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        _priorityLabel(issue.priority),
+                        style: AppTextStyles.caption.copyWith(
+                          color: _priorityColor(issue.priority),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      AppDateUtils.timeAgo(issue.createdAt),
+                      style: AppTextStyles.caption
+                          .copyWith(color: subtext),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Description ───────────────────────────
+            if (issue.description != null &&
+                issue.description!.isNotEmpty) ...[
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Mô tả',
+                        style: AppTextStyles.body.copyWith(
+                            color: fg,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text(issue.description!,
+                        style: AppTextStyles.body
+                            .copyWith(color: subtext)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // ── Handler note ──────────────────────────
+            if (issue.handlerNote != null &&
+                issue.handlerNote!.isNotEmpty) ...[
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.admin_panel_settings_outlined,
+                          color: AppColors.accent, size: 16),
+                      const SizedBox(width: 6),
+                      Text('Phản hồi từ chủ trọ',
+                          style: AppTextStyles.body.copyWith(
+                            color: fg,
+                            fontWeight: FontWeight.w600,
+                          )),
+                    ]),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        issue.handlerNote!,
+                        style: AppTextStyles.body
+                            .copyWith(color: fg),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // ── Rating already submitted ───────────────
+            if (issue.rating != null) ...[
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.star_rounded,
+                          color: AppColors.warning, size: 18),
+                      const SizedBox(width: 6),
+                      Text('Đánh giá của bạn',
+                          style: AppTextStyles.body.copyWith(
+                              color: fg,
+                              fontWeight: FontWeight.w600)),
+                    ]),
+                    const SizedBox(height: 12),
+                    Row(children: List.generate(
+                      5,
+                          (i) => Icon(
+                        i < issue.rating!
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        color: AppColors.warning,
+                        size: 28,
+                      ),
+                    )),
+                    if (issue.tenantFeedback != null &&
+                        issue.tenantFeedback!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(issue.tenantFeedback!,
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: subtext)),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // ── Rating form — show if RESOLVED & no rating yet ──
+            if (issue.status == 'RESOLVED' &&
+                issue.rating == null) ...[
+              if (!_showRating)
+                AppButton(
+                  label: 'Đánh giá kết quả xử lý',
+                  icon: Icons.star_outline_rounded,
+                  variant: AppButtonVariant.outlined,
+                  onPressed: () => setState(() => _showRating = true),
+                )
+              else
+                AppCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Đánh giá kết quả xử lý',
+                          style: AppTextStyles.body.copyWith(
+                              color: fg,
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 16),
+
+                      // Star selector
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          5,
+                              (i) => GestureDetector(
+                            onTap: () =>
+                                setState(() => _rating = i + 1),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4),
+                              child: Icon(
+                                i < _rating
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                color: AppColors.warning,
+                                size: 40,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Text(
+                          _rating == 0
+                              ? 'Chạm để chọn sao'
+                              : [
+                            '',
+                            'Rất tệ',
+                            'Tệ',
+                            'Bình thường',
+                            'Tốt',
+                            'Rất tốt'
+                          ][_rating],
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: _rating == 0
+                                ? subtext
+                                : AppColors.warning,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Nhận xét (tuỳ chọn)',
+                        hint: 'Chia sẻ trải nghiệm của bạn...',
+                        controller: _feedbackCtrl,
+                        maxLines: 3,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(children: [
+                        Expanded(
+                          child: AppButton(
+                            label: 'Huỷ',
+                            variant: AppButtonVariant.outlined,
+                            onPressed: () =>
+                                setState(() => _showRating = false),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: AppButton(
+                            label: 'Gửi đánh giá',
+                            onPressed: _submitRating,
+                            loading: _submitting,
+                          ),
+                        ),
+                      ]),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 16),
+            ],
+
+            // ── Status timeline ───────────────────────
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Tiến trình xử lý',
+                      style: AppTextStyles.body.copyWith(
+                          color: fg, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 16),
+                  _StatusStep(
+                    label: 'Đã gửi khiếu nại',
+                    done: true,
+                    active: issue.status == 'OPEN',
+                    subtext: subtext,
+                  ),
+                  _StatusStep(
+                    label: 'Đang xử lý',
+                    done: issue.status != 'OPEN',
+                    active: issue.status == 'PROCESSING',
+                    subtext: subtext,
+                  ),
+                  _StatusStep(
+                    label: 'Đã giải quyết',
+                    done: issue.status == 'RESOLVED' ||
+                        issue.status == 'CLOSED',
+                    active: issue.status == 'RESOLVED',
+                    subtext: subtext,
+                  ),
+                  _StatusStep(
+                    label: 'Hoàn thành',
+                    done: issue.status == 'CLOSED',
+                    active: issue.status == 'CLOSED',
+                    subtext: subtext,
+                    isLast: true,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusStep extends StatelessWidget {
+  final String label;
+  final bool done;
+  final bool active;
+  final Color subtext;
+  final bool isLast;
+
+  const _StatusStep({
+    required this.label,
+    required this.done,
+    required this.active,
+    required this.subtext,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = done ? AppColors.success : subtext;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: done ? AppColors.success : subtext.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              done ? Icons.check_rounded : Icons.circle_outlined,
+              color: done ? Colors.white : subtext,
+              size: 14,
+            ),
+          ),
+          if (!isLast)
+            Container(
+              width: 2,
+              height: 28,
+              color: done ? AppColors.success.withOpacity(0.3) : subtext.withOpacity(0.2),
+            ),
+        ]),
+        const SizedBox(width: 12),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: active ? AppColors.success : (done ? color : subtext),
+              fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

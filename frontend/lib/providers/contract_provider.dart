@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import  'package:flutter/material.dart';
 import '../data/models/contract_model.dart';
 import '../data/services/contract_service.dart';
 

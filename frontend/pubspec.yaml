@@ -29,6 +29,9 @@ dependencies:
   shimmer: ^3.0.0
   flutter_svg: ^2.0.10+1
 
+  # Image picker — THÊM MỚI để chọn/chụp ảnh avatar
+  image_picker: ^1.1.2
+
   # Utils
   intl: ^0.20.1
   equatable: ^2.0.5

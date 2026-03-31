@@ -1,29 +1,15 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
-import '../../providers/auth_provider.dart';
-import '../../data/services/avatar_upload_service.dart';
 
-/// Widget avatar có thể nhấn để thay ảnh.
-/// Dùng được ở cả màn hình chủ trọ lẫn người thuê.
-///
-/// Cách dùng:
-/// ```dart
-/// AvatarPickerWidget(
-///   currentUrl: user.avatarUrl,
-///   userId: user.userId,
-///   onUploaded: (newUrl) {
-///     // cập nhật state / provider
-///   },
-/// )
-/// ```
+import '../../data/services/avatar_upload_service.dart';
+import '../theme/app_colors.dart';
+
 class AvatarPickerWidget extends StatefulWidget {
   final String? currentUrl;
   final int userId;
-  final String role; // 'HOST' | 'TENANT'
+  final String role;
   final void Function(String newUrl)? onUploaded;
   final double size;
 
@@ -43,12 +29,12 @@ class AvatarPickerWidget extends StatefulWidget {
 class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
   final _picker = ImagePicker();
   bool _uploading = false;
-  String? _localUrl; // URL tạm sau khi upload thành công
+  String? _localUrl;
 
   String? get _displayUrl => _localUrl ?? widget.currentUrl;
 
   Future<void> _pick(ImageSource source) async {
-    Navigator.pop(context); // đóng bottom sheet
+    Navigator.pop(context);
 
     final picked = await _picker.pickImage(
       source: source,
@@ -56,7 +42,9 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
       maxHeight: 800,
       imageQuality: 85,
     );
-    if (picked == null || !mounted) return;
+    if (picked == null || !mounted) {
+      return;
+    }
 
     setState(() => _uploading = true);
     try {
@@ -66,30 +54,42 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
         userId: widget.userId,
         role: widget.role,
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       setState(() => _localUrl = newUrl);
       widget.onUploaded?.call(newUrl);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Cập nhật ảnh đại diện thành công'),
+          content: const Text('Cap nhat anh dai dien thanh cong'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Lỗi upload ảnh: $e'),
+          content: Text('Loi upload anh: $e'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) {
+        setState(() => _uploading = false);
+      }
     }
   }
 
@@ -99,7 +99,7 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -115,21 +115,23 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Chụp ảnh'),
+              title: const Text('Chup anh'),
               onTap: () => _pick(ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Chọn từ thư viện'),
+              title: const Text('Chon tu thu vien'),
               onTap: () => _pick(ImageSource.gallery),
             ),
             if (_displayUrl != null)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Xoá ảnh đại diện',
-                    style: TextStyle(color: Colors.red)),
+                title: const Text(
+                  'Xoa anh dai dien',
+                  style: TextStyle(color: Colors.red),
+                ),
                 onTap: () async {
-                  Navigator.pop(ctx);
+                  Navigator.pop(sheetContext);
                   await _removeAvatar();
                 },
               ),
@@ -145,60 +147,82 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
     try {
       final service = AvatarUploadService();
       await service.remove(userId: widget.userId, role: widget.role);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       setState(() => _localUrl = null);
       widget.onUploaded?.call('');
-    } catch (e) {
-      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi xoá ảnh: $e'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: const Text('Da xoa anh dai dien'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Loi xoa anh: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       );
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) {
+        setState(() => _uploading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final size = widget.size;
-    final radius = size / 2;
 
     return GestureDetector(
       onTap: _uploading ? null : _showPicker,
       child: Stack(
         children: [
-          // ── Avatar circle ──────────────────────────────────
           Container(
             width: size,
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.accent.withOpacity(0.1),
+              color: AppColors.accent.withValues(alpha: 0.1),
               border: Border.all(
-                color: AppColors.accent.withOpacity(0.3),
+                color: AppColors.accent.withValues(alpha: 0.3),
                 width: 2,
               ),
             ),
             child: ClipOval(
               child: _uploading
                   ? const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.accent,
-                  strokeWidth: 2,
-                ),
-              )
+                      child: CircularProgressIndicator(
+                        color: AppColors.accent,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : _displayUrl != null && _displayUrl!.isNotEmpty
-                  ? Image.network(
-                _displayUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    _defaultAvatar(size),
-              )
-                  : _defaultAvatar(size),
+                      ? Image.network(
+                          _displayUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _defaultAvatar(size),
+                        )
+                      : _defaultAvatar(size),
             ),
           ),
-
-          // ── Camera badge ───────────────────────────────────
           Positioned(
             bottom: 0,
             right: 0,

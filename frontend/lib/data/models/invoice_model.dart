@@ -23,18 +23,30 @@ class InvoiceModel {
 
   factory InvoiceModel.fromJson(Map<String, dynamic> json) {
     return InvoiceModel(
-      invoiceId: json['invoiceId'],
-      invoiceCode: json['invoiceCode'] ?? '',
-      tenantName: json['tenantName'] ?? '',
-      roomCode: json['roomCode'] ?? '',
-      billingMonth: json['billingMonth'] ?? 0,
-      billingYear: json['billingYear'] ?? 0,
-      totalAmount: (json['totalAmount'] ?? 0).toDouble(),
-      status: json['status'] ?? 'UNPAID',
-      createdAt: json['createdAt'],
+      invoiceId: json['invoiceId'] as int,
+      invoiceCode: (json['invoiceCode'] as String?) ?? '',
+      // tenant-service (MyInvoiceDTO) không có tenantName → fallback ''
+      tenantName: (json['tenantName'] as String?) ?? '',
+      // tenant-service (MyInvoiceDTO) không có roomCode → fallback ''
+      roomCode: (json['roomCode'] as String?) ?? '',
+      billingMonth: (json['billingMonth'] as int?) ?? 0,
+      billingYear: (json['billingYear'] as int?) ?? 0,
+      totalAmount: _toDouble(json['totalAmount']),
+      status: (json['status'] as String?) ?? 'UNPAID',
+      createdAt: json['createdAt'] as String?,
     );
   }
+
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is double) return v;
+    if (v is int) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0.0;
+    return 0.0;
+  }
 }
+
+// ── Detail model (host + tenant) ─────────────────────────────────────────────
 
 class InvoiceDetailModel extends InvoiceModel {
   final double rentAmount;
@@ -49,7 +61,8 @@ class InvoiceDetailModel extends InvoiceModel {
   final double serviceAmount;
   final List<String> serviceNames;
   final String? paidAt;
-  // FIX: tambah dueDate (ada di MyInvoiceDetailDTO dari tenant-service)
+  /// Hạn thanh toán — từ tenant-service (MyInvoiceDetailDTO.dueDate).
+  /// Backend trả về kiểu LocalDate dạng "yyyy-MM-dd", không phải timestamp.
   final String? dueDate;
 
   InvoiceDetailModel({
@@ -79,28 +92,44 @@ class InvoiceDetailModel extends InvoiceModel {
 
   factory InvoiceDetailModel.fromJson(Map<String, dynamic> json) {
     return InvoiceDetailModel(
-      invoiceId: json['invoiceId'],
-      invoiceCode: json['invoiceCode'] ?? '',
-      tenantName: json['tenantName'] ?? '',
-      roomCode: json['roomCode'] ?? '',
-      billingMonth: json['billingMonth'] ?? 0,
-      billingYear: json['billingYear'] ?? 0,
-      totalAmount: (json['totalAmount'] ?? 0).toDouble(),
-      status: json['status'] ?? 'UNPAID',
-      createdAt: json['createdAt'],
-      rentAmount: (json['rentAmount'] ?? 0).toDouble(),
-      elecOld: json['elecOld'] ?? 0,
-      elecNew: json['elecNew'] ?? 0,
-      elecPrice: (json['elecPrice'] ?? 0).toDouble(),
-      elecAmount: (json['elecAmount'] ?? 0).toDouble(),
-      waterOld: json['waterOld'] ?? 0,
-      waterNew: json['waterNew'] ?? 0,
-      waterPrice: (json['waterPrice'] ?? 0).toDouble(),
-      waterAmount: (json['waterAmount'] ?? 0).toDouble(),
-      serviceAmount: (json['serviceAmount'] ?? 0).toDouble(),
-      serviceNames: List<String>.from(json['serviceNames'] ?? []),
-      paidAt: json['paidAt'],
-      dueDate: json['dueDate'],
+      invoiceId: json['invoiceId'] as int,
+      invoiceCode: (json['invoiceCode'] as String?) ?? '',
+      tenantName: (json['tenantName'] as String?) ?? '',
+      roomCode: (json['roomCode'] as String?) ?? '',
+      billingMonth: (json['billingMonth'] as int?) ?? 0,
+      billingYear: (json['billingYear'] as int?) ?? 0,
+      totalAmount: _toDouble(json['totalAmount']),
+      status: (json['status'] as String?) ?? 'UNPAID',
+      createdAt: json['createdAt'] as String?,
+      rentAmount: _toDouble(json['rentAmount']),
+      elecOld: (json['elecOld'] as int?) ?? 0,
+      elecNew: (json['elecNew'] as int?) ?? 0,
+      elecPrice: _toDouble(json['elecPrice']),
+      elecAmount: _toDouble(json['elecAmount']),
+      waterOld: (json['waterOld'] as int?) ?? 0,
+      waterNew: (json['waterNew'] as int?) ?? 0,
+      waterPrice: _toDouble(json['waterPrice']),
+      waterAmount: _toDouble(json['waterAmount']),
+      serviceAmount: _toDouble(json['serviceAmount']),
+      serviceNames: _toStringList(json['serviceNames']),
+      paidAt: json['paidAt'] as String?,
+      // dueDate từ tenant-service là LocalDate → String "yyyy-MM-dd"
+      // dueDate từ host-service có thể không tồn tại → null
+      dueDate: json['dueDate'] as String?,
     );
+  }
+
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is double) return v;
+    if (v is int) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0.0;
+    return 0.0;
+  }
+
+  static List<String> _toStringList(dynamic v) {
+    if (v == null) return [];
+    if (v is List) return v.map((e) => e.toString()).toList();
+    return [];
   }
 }

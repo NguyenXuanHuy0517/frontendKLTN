@@ -33,8 +33,10 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
 
   String? get _displayUrl => _localUrl ?? widget.currentUrl;
 
+  // ── Chọn ảnh từ camera hoặc thư viện ─────────────────────────────
   Future<void> _pick(ImageSource source) async {
-    Navigator.pop(context);
+    // Đóng bottom sheet trước khi mở image picker
+    if (mounted) Navigator.of(context).pop();
 
     final picked = await _picker.pickImage(
       source: source,
@@ -42,9 +44,8 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
       maxHeight: 800,
       imageQuality: 85,
     );
-    if (picked == null || !mounted) {
-      return;
-    }
+
+    if (picked == null || !mounted) return;
 
     setState(() => _uploading = true);
     try {
@@ -54,31 +55,28 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
         userId: widget.userId,
         role: widget.role,
       );
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() => _localUrl = newUrl);
       widget.onUploaded?.call(newUrl);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Cap nhat anh dai dien thanh cong'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Cập nhật ảnh đại diện thành công'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) {
-        return;
+        );
       }
-
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Loi upload anh: $e'),
+          content: Text('Lỗi upload ảnh: ${_friendlyError(e)}'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -87,19 +85,18 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _uploading = false);
-      }
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
+  // ── Hiển thị bottom sheet chọn nguồn ảnh ─────────────────────────
   void _showPicker() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (sheetContext) => SafeArea(
+      builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -115,23 +112,23 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Chup anh'),
+              title: const Text('Chụp ảnh'),
               onTap: () => _pick(ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Chon tu thu vien'),
+              title: const Text('Chọn từ thư viện'),
               onTap: () => _pick(ImageSource.gallery),
             ),
-            if (_displayUrl != null)
+            if (_displayUrl != null && _displayUrl!.isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text(
-                  'Xoa anh dai dien',
+                  'Xóa ảnh đại diện',
                   style: TextStyle(color: Colors.red),
                 ),
                 onTap: () async {
-                  Navigator.pop(sheetContext);
+                  Navigator.pop(context);
                   await _removeAvatar();
                 },
               ),
@@ -142,36 +139,34 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
     );
   }
 
+  // ── Xóa avatar ────────────────────────────────────────────────────
   Future<void> _removeAvatar() async {
     setState(() => _uploading = true);
     try {
       final service = AvatarUploadService();
       await service.remove(userId: widget.userId, role: widget.role);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       setState(() => _localUrl = null);
       widget.onUploaded?.call('');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Da xoa anh dai dien'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Đã xóa ảnh đại diện'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) {
-        return;
+        );
       }
-
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Loi xoa anh: $e'),
+          content: Text('Lỗi xóa ảnh: ${_friendlyError(e)}'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -180,10 +175,21 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _uploading = false);
-      }
+      if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  String _friendlyError(Object e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') || msg.contains('connection')) {
+      return 'Không có kết nối mạng';
+    }
+    if (msg.contains('FormatException') || msg.contains('null')) {
+      return 'Phản hồi từ server không hợp lệ';
+    }
+    // Bỏ prefix "Exception: "
+    if (msg.startsWith('Exception: ')) return msg.substring(11);
+    return msg;
   }
 
   @override
@@ -193,36 +199,51 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
     return GestureDetector(
       onTap: _uploading ? null : _showPicker,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Container(
             width: size,
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.accent.withValues(alpha: 0.1),
+              color: AppColors.accent.withOpacity(0.1),
               border: Border.all(
-                color: AppColors.accent.withValues(alpha: 0.3),
+                color: AppColors.accent.withOpacity(0.3),
                 width: 2,
               ),
             ),
             child: ClipOval(
               child: _uploading
                   ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.accent,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : _displayUrl != null && _displayUrl!.isNotEmpty
-                      ? Image.network(
-                          _displayUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _defaultAvatar(size),
-                        )
-                      : _defaultAvatar(size),
+                child: CircularProgressIndicator(
+                  color: AppColors.accent,
+                  strokeWidth: 2,
+                ),
+              )
+                  : (_displayUrl != null && _displayUrl!.isNotEmpty)
+                  ? Image.network(
+                _displayUrl!,
+                fit: BoxFit.cover,
+                // Hiển thị placeholder trong lúc tải
+                loadingBuilder: (_, child, progress) {
+                  if (progress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: progress.expectedTotalBytes != null
+                          ? progress.cumulativeBytesLoaded /
+                          progress.expectedTotalBytes!
+                          : null,
+                      color: AppColors.accent,
+                      strokeWidth: 2,
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) => _defaultAvatar(size),
+              )
+                  : _defaultAvatar(size),
             ),
           ),
+          // Nút camera nhỏ góc phải dưới
           Positioned(
             bottom: 0,
             right: 0,

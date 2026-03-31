@@ -28,19 +28,19 @@ class _TenantInvoiceDetailScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final userId = await context.read<AuthProvider>().getUserId();
       if (!mounted || userId == null) return;
-      // FIX: dùng tenant endpoint
-      context.read<InvoiceProvider>()
+      context
+          .read<InvoiceProvider>()
           .fetchInvoiceDetailByTenant(widget.invoiceId, userId);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
-    final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    final isDark  = Theme.of(context).brightness == Brightness.dark;
+    final bg      = isDark ? AppColors.darkBg : AppColors.lightBg;
+    final fg      = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-    final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final border  = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final invoice = context.watch<InvoiceProvider>().selected;
 
     return Scaffold(
@@ -63,7 +63,7 @@ class _TenantInvoiceDetailScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header banner ────────────────────────────
+            // ── Header banner ──────────────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -83,10 +83,13 @@ class _TenantInvoiceDetailScreenState
                         children: [
                           Text(
                             AppDateUtils.formatMonthYear(
-                                invoice.billingMonth,
-                                invoice.billingYear),
-                            style: AppTextStyles.h3.copyWith(color: fg),
+                              invoice.billingMonth,
+                              invoice.billingYear,
+                            ),
+                            style:
+                            AppTextStyles.h3.copyWith(color: fg),
                           ),
+                          // Chỉ hiển thị số phòng nếu có dữ liệu
                           if (invoice.roomCode.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Text(
@@ -104,26 +107,34 @@ class _TenantInvoiceDetailScreenState
                   Text(
                     CurrencyUtils.format(invoice.totalAmount),
                     style: AppTextStyles.h1.copyWith(
-                        color: AppColors.accent, fontSize: 28),
+                      color: AppColors.accent,
+                      fontSize: 28,
+                    ),
                   ),
+                  // Cảnh báo trạng thái
                   if (invoice.status == 'UNPAID' ||
                       invoice.status == 'OVERDUE') ...[
                     const SizedBox(height: 6),
                     Row(children: [
-                      Icon(Icons.info_outline_rounded,
-                          size: 14,
-                          color: invoice.status == 'OVERDUE'
-                              ? AppColors.error
-                              : AppColors.warning),
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: invoice.status == 'OVERDUE'
+                            ? AppColors.error
+                            : AppColors.warning,
+                      ),
                       const SizedBox(width: 6),
-                      Text(
-                        invoice.status == 'OVERDUE'
-                            ? 'Hóa đơn đã quá hạn thanh toán'
-                            : 'Vui lòng thanh toán cho chủ trọ',
-                        style: AppTextStyles.bodySmall.copyWith(
+                      Expanded(
+                        child: Text(
+                          invoice.status == 'OVERDUE'
+                              ? 'Hóa đơn đã quá hạn thanh toán'
+                              : 'Vui lòng thanh toán cho chủ trọ',
+                          style: AppTextStyles.bodySmall.copyWith(
                             color: invoice.status == 'OVERDUE'
                                 ? AppColors.error
-                                : AppColors.warning),
+                                : AppColors.warning,
+                          ),
+                        ),
                       ),
                     ]),
                   ],
@@ -133,7 +144,7 @@ class _TenantInvoiceDetailScreenState
 
             const SizedBox(height: 20),
 
-            // ── Chi tiết thanh toán ──────────────────────
+            // ── Chi tiết thanh toán ────────────────────────────
             AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,12 +155,14 @@ class _TenantInvoiceDetailScreenState
                         color: fg, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 16),
+
                   _DetailRow(
                     label: 'Tiền phòng',
                     value: CurrencyUtils.format(invoice.rentAmount),
                     fg: fg,
                     subtext: subtext,
                   ),
+
                   const SizedBox(height: 8),
                   _DetailRow(
                     label:
@@ -160,15 +173,13 @@ class _TenantInvoiceDetailScreenState
                   ),
                   if (invoice.elecPrice > 0) ...[
                     const SizedBox(height: 2),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 0),
-                      child: Text(
-                        'Đơn giá: ${CurrencyUtils.format(invoice.elecPrice)}/kWh',
-                        style: AppTextStyles.caption
-                            .copyWith(color: subtext),
-                      ),
+                    Text(
+                      'Đơn giá: ${CurrencyUtils.format(invoice.elecPrice)}/kWh',
+                      style: AppTextStyles.caption
+                          .copyWith(color: subtext),
                     ),
                   ],
+
                   const SizedBox(height: 8),
                   _DetailRow(
                     label:
@@ -181,15 +192,17 @@ class _TenantInvoiceDetailScreenState
                     const SizedBox(height: 2),
                     Text(
                       'Đơn giá: ${CurrencyUtils.format(invoice.waterPrice)}/m³',
-                      style:
-                      AppTextStyles.caption.copyWith(color: subtext),
+                      style: AppTextStyles.caption
+                          .copyWith(color: subtext),
                     ),
                   ],
+
                   if (invoice.serviceAmount > 0) ...[
                     const SizedBox(height: 8),
                     _DetailRow(
                       label: 'Dịch vụ',
-                      value: CurrencyUtils.format(invoice.serviceAmount),
+                      value:
+                      CurrencyUtils.format(invoice.serviceAmount),
                       fg: fg,
                       subtext: subtext,
                     ),
@@ -203,21 +216,26 @@ class _TenantInvoiceDetailScreenState
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color:
-                              AppColors.accent.withOpacity(0.08),
+                              color: AppColors.accent
+                                  .withOpacity(0.08),
                               borderRadius:
                               BorderRadius.circular(6),
                             ),
-                            child: Text(s,
-                                style:
-                                AppTextStyles.caption.copyWith(
-                                    color: AppColors.accent)),
+                            child: Text(
+                              s,
+                              style:
+                              AppTextStyles.caption.copyWith(
+                                color: AppColors.accent,
+                              ),
+                            ),
                           ))
                               .toList(),
                         ),
                       ),
                   ],
+
                   Divider(color: border, height: 20),
+
                   _DetailRow(
                     label: 'Tổng cộng',
                     value: CurrencyUtils.format(invoice.totalAmount),
@@ -229,8 +247,9 @@ class _TenantInvoiceDetailScreenState
               ),
             ),
 
-            // ── Thời hạn thanh toán ──────────────────────
+            // ── Hạn thanh toán ─────────────────────────────────
             if (invoice.dueDate != null &&
+                invoice.dueDate!.isNotEmpty &&
                 (invoice.status == 'UNPAID' ||
                     invoice.status == 'OVERDUE')) ...[
               const SizedBox(height: 16),
@@ -238,10 +257,10 @@ class _TenantInvoiceDetailScreenState
                 child: Row(children: [
                   Icon(
                     Icons.calendar_today_outlined,
+                    size: 20,
                     color: invoice.status == 'OVERDUE'
                         ? AppColors.error
                         : AppColors.warning,
-                    size: 20,
                   ),
                   const SizedBox(width: 12),
                   Column(
@@ -249,9 +268,11 @@ class _TenantInvoiceDetailScreenState
                     children: [
                       Text(
                         'Hạn thanh toán',
-                        style:
-                        AppTextStyles.caption.copyWith(color: subtext),
+                        style: AppTextStyles.caption
+                            .copyWith(color: subtext),
                       ),
+                      // dueDate từ backend là "yyyy-MM-dd"
+                      // AppDateUtils.formatDate nhận ISO string
                       Text(
                         AppDateUtils.formatDate(invoice.dueDate),
                         style: AppTextStyles.body.copyWith(
@@ -267,8 +288,9 @@ class _TenantInvoiceDetailScreenState
               ),
             ],
 
-            // ── Đã thanh toán ────────────────────────────
-            if (invoice.status == 'PAID' && invoice.paidAt != null) ...[
+            // ── Đã thanh toán ──────────────────────────────────
+            if (invoice.status == 'PAID' &&
+                invoice.paidAt != null) ...[
               const SizedBox(height: 16),
               AppCard(
                 child: Row(children: [
@@ -294,9 +316,13 @@ class _TenantInvoiceDetailScreenState
   }
 }
 
+// ── Row hiển thị dòng chi tiết ────────────────────────────────────────────────
+
 class _DetailRow extends StatelessWidget {
-  final String label, value;
-  final Color fg, subtext;
+  final String label;
+  final String value;
+  final Color fg;
+  final Color subtext;
   final bool bold;
 
   const _DetailRow({
@@ -316,7 +342,8 @@ class _DetailRow extends StatelessWidget {
           label,
           style: AppTextStyles.bodySmall.copyWith(
             color: bold ? fg : subtext,
-            fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
+            fontWeight:
+            bold ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
       ),
@@ -324,7 +351,8 @@ class _DetailRow extends StatelessWidget {
         value,
         style: AppTextStyles.bodySmall.copyWith(
           color: fg,
-          fontWeight: bold ? FontWeight.w700 : FontWeight.w600,
+          fontWeight:
+          bold ? FontWeight.w700 : FontWeight.w600,
         ),
       ),
     ],

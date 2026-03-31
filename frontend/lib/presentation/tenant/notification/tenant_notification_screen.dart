@@ -4,12 +4,11 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/date_utils.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_loading.dart';
+import '../../../core/widgets/tenant_bottom_nav.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../data/services/api_client.dart';
-import '../../../core/widgets/tenant_bottom_nav.dart';
 
 class _NotificationModel {
   final int notificationId;
@@ -47,6 +46,7 @@ class _NotificationModel {
 
 class TenantNotificationScreen extends StatefulWidget {
   const TenantNotificationScreen({super.key});
+
   @override
   State<TenantNotificationScreen> createState() =>
       _TenantNotificationScreenState();
@@ -66,10 +66,11 @@ class _TenantNotificationScreenState
 
   Future<void> _load() async {
     _userId = await context.read<AuthProvider>().getUserId();
-    if (_userId == null) return;
+    if (_userId == null || !mounted) return;
     setState(() => _loading = true);
     try {
-      final res = await ApiClient.instance.hostDio.get(
+      // FIX: dùng tenantDio thay vì hostDio
+      final res = await ApiClient.instance.tenantDio.get(
         '/api/tenant/notifications',
         queryParameters: {'userId': _userId},
       );
@@ -77,7 +78,18 @@ class _TenantNotificationScreenState
           .map((e) => _NotificationModel.fromJson(e))
           .toList();
       if (mounted) setState(() => _notifications = list);
-    } catch (_) {
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Không tải được thông báo'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -86,7 +98,7 @@ class _TenantNotificationScreenState
   Future<void> _markAllRead() async {
     if (_userId == null) return;
     try {
-      await ApiClient.instance.hostDio.patch(
+      await ApiClient.instance.tenantDio.patch(
         '/api/tenant/notifications/read-all',
         queryParameters: {'userId': _userId},
       );
@@ -97,7 +109,7 @@ class _TenantNotificationScreenState
   Future<void> _markRead(int notificationId) async {
     if (_userId == null) return;
     try {
-      await ApiClient.instance.hostDio.patch(
+      await ApiClient.instance.tenantDio.patch(
         '/api/tenant/notifications/$notificationId/read',
         queryParameters: {'userId': _userId},
       );
@@ -105,15 +117,16 @@ class _TenantNotificationScreenState
         final idx = _notifications
             .indexWhere((n) => n.notificationId == notificationId);
         if (idx != -1) {
+          final old = _notifications[idx];
           _notifications[idx] = _NotificationModel(
-            notificationId: _notifications[idx].notificationId,
-            type: _notifications[idx].type,
-            title: _notifications[idx].title,
-            body: _notifications[idx].body,
-            refType: _notifications[idx].refType,
-            refId: _notifications[idx].refId,
+            notificationId: old.notificationId,
+            type: old.type,
+            title: old.title,
+            body: old.body,
+            refType: old.refType,
+            refId: old.refId,
             isRead: true,
-            createdAt: _notifications[idx].createdAt,
+            createdAt: old.createdAt,
           );
         }
       });
@@ -155,7 +168,7 @@ class _TenantNotificationScreenState
     _markRead(n.notificationId);
     if (n.refType == 'INVOICE' && n.refId != null) {
       context.push('/tenant/invoices/${n.refId}');
-    } else if (n.refType == 'CONTRACT' && n.refId != null) {
+    } else if (n.refType == 'CONTRACT') {
       context.push('/tenant/contract');
     } else if (n.refType == 'ISSUE' && n.refId != null) {
       context.push('/tenant/issues/${n.refId}');
@@ -178,14 +191,20 @@ class _TenantNotificationScreenState
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: fg, size: 20),
           onPressed: () => context.pop(),
         ),
-        title: Text('Thông báo', style: AppTextStyles.h3.copyWith(color: fg)),
+        title: Text(
+          'Thông báo${unread > 0 ? ' ($unread)' : ''}',
+          style: AppTextStyles.h3.copyWith(color: fg),
+        ),
         actions: [
           if (unread > 0)
             TextButton(
               onPressed: _markAllRead,
-              child: Text('Đọc hết',
-                  style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.accent, fontWeight: FontWeight.w600)),
+              child: Text(
+                'Đọc hết',
+                style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w600),
+              ),
             ),
         ],
       ),
@@ -206,6 +225,15 @@ class _TenantNotificationScreenState
           itemBuilder: (_, i) {
             final n = _notifications[i];
             final color = _colorForType(n.type);
+            final cardColor = n.isRead
+                ? (isDark ? AppColors.darkCard : AppColors.lightCard)
+                : color.withOpacity(0.06);
+            final borderColor = n.isRead
+                ? (isDark
+                ? AppColors.darkBorder
+                : AppColors.lightBorder)
+                : color.withOpacity(0.25);
+
             return Material(
               color: Colors.transparent,
               child: InkWell(
@@ -214,19 +242,9 @@ class _TenantNotificationScreenState
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: n.isRead
-                        ? (isDark
-                        ? AppColors.darkCard
-                        : AppColors.lightCard)
-                        : color.withOpacity(0.06),
+                    color: cardColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: n.isRead
-                          ? (isDark
-                          ? AppColors.darkBorder
-                          : AppColors.lightBorder)
-                          : color.withOpacity(0.25),
-                    ),
+                    border: Border.all(color: borderColor),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,6 +281,8 @@ class _TenantNotificationScreenState
                                 Container(
                                   width: 8,
                                   height: 8,
+                                  margin: const EdgeInsets.only(
+                                      left: 8),
                                   decoration: BoxDecoration(
                                     color: color,
                                     shape: BoxShape.circle,

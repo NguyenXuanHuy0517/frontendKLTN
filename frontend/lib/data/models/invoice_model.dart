@@ -49,6 +49,8 @@ class InvoiceDetailModel extends InvoiceModel {
   final double serviceAmount;
   final List<String> serviceNames;
   final String? paidAt;
+  // FIX: tambah dueDate (ada di MyInvoiceDetailDTO dari tenant-service)
+  final String? dueDate;
 
   InvoiceDetailModel({
     required super.invoiceId,
@@ -72,6 +74,7 @@ class InvoiceDetailModel extends InvoiceModel {
     required this.serviceAmount,
     required this.serviceNames,
     this.paidAt,
+    this.dueDate,
   });
 
   factory InvoiceDetailModel.fromJson(Map<String, dynamic> json) {
@@ -97,6 +100,7 @@ class InvoiceDetailModel extends InvoiceModel {
       serviceAmount: (json['serviceAmount'] ?? 0).toDouble(),
       serviceNames: List<String>.from(json['serviceNames'] ?? []),
       paidAt: json['paidAt'],
+      dueDate: json['dueDate'],
     );
   }
 }

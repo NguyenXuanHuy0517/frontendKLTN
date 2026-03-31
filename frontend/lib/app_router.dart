@@ -48,7 +48,6 @@ class AppRouter {
       if (!isLoggedIn && !isAuthRoute) return '/login';
 
       if (isLoggedIn && isAuthRoute) {
-        // Route theo role
         final role = await _authService.getRole();
         if (role == 'TENANT') return '/tenant/dashboard';
         return '/host/dashboard';
@@ -56,7 +55,7 @@ class AppRouter {
       return null;
     },
     routes: [
-      // ── Auth ──────────────────────────────────────────
+      // ── Auth ──────────────────────────────────────────────
       GoRoute(
         path: '/login',
         builder: (_, __) => const LoginScreen(),
@@ -66,9 +65,9 @@ class AppRouter {
         builder: (_, __) => const RegisterScreen(),
       ),
 
-      // ──────────────────────────────────────────────────
+      // ──────────────────────────────────────────────────────
       // HOST ROUTES
-      // ──────────────────────────────────────────────────
+      // ──────────────────────────────────────────────────────
 
       GoRoute(
         path: '/host/dashboard',
@@ -175,9 +174,9 @@ class AppRouter {
         ),
       ),
 
-      // ──────────────────────────────────────────────────
+      // ──────────────────────────────────────────────────────
       // TENANT ROUTES
-      // ──────────────────────────────────────────────────
+      // ──────────────────────────────────────────────────────
 
       GoRoute(
         path: '/tenant/dashboard',
@@ -233,6 +232,6 @@ class AppRouter {
       ),
     ],
 
-    errorBuilder: (_, state) => const LoginScreen(),
+    errorBuilder: (_, __) => const LoginScreen(),
   );
 }

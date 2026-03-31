@@ -6,16 +6,16 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/currency_utils.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/gradient_text.dart';
 import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/tenant_bottom_nav.dart';
+import '../../../data/models/contract_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/contract_provider.dart';
 import '../../../providers/invoice_provider.dart';
 import '../../../providers/issue_provider.dart';
 import '../../../providers/theme_provider.dart';
-import '../../../core/widgets/tenant_bottom_nav.dart';
 
 class TenantDashboardScreen extends StatefulWidget {
   const TenantDashboardScreen({super.key});
@@ -49,12 +49,13 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
     final contractProvider = context.watch<ContractProvider>();
-    final invoiceProvider  = context.watch<InvoiceProvider>();
-    final issueProvider    = context.watch<IssueProvider>();
+    final invoiceProvider = context.watch<InvoiceProvider>();
+    final issueProvider = context.watch<IssueProvider>();
 
     final currentContract = contractProvider.currentContract;
-    final unpaidCount     = invoiceProvider.unpaidInvoices.length;
-    final openIssueCount  = issueProvider.openIssues.length;
+    final unpaidCount = invoiceProvider.unpaidInvoices.length;
+    final overdueCount = invoiceProvider.overdueInvoices.length;
+    final openIssueCount = issueProvider.openIssues.length;
 
     return Scaffold(
       backgroundColor: bg,
@@ -71,9 +72,11 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                   child: Row(
                     children: [
                       Container(
-                        width: 36, height: 36,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: AppColors.gradient),
+                          gradient: const LinearGradient(
+                              colors: AppColors.gradient),
                           borderRadius: BorderRadius.circular(9),
                         ),
                         child: const Icon(Icons.home_work_rounded,
@@ -81,18 +84,25 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                       ),
                       const SizedBox(width: 10),
                       GradientText('SmartRoom',
-                          style: AppTextStyles.h3, colors: AppColors.gradient),
+                          style: AppTextStyles.h3,
+                          colors: AppColors.gradient),
                       const Spacer(),
                       IconButton(
                         icon: Icon(
-                          isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                          color: subtext, size: 22,
+                          isDark
+                              ? Icons.light_mode_outlined
+                              : Icons.dark_mode_outlined,
+                          color: subtext,
+                          size: 22,
                         ),
-                        onPressed: () => context.read<ThemeProvider>().toggleTheme(),
+                        onPressed: () =>
+                            context.read<ThemeProvider>().toggleTheme(),
                       ),
                       IconButton(
-                        icon: Icon(Icons.notifications_outlined, color: subtext, size: 22),
-                        onPressed: () => context.push('/tenant/notifications'),
+                        icon: Icon(Icons.notifications_outlined,
+                            color: subtext, size: 22),
+                        onPressed: () =>
+                            context.push('/tenant/notifications'),
                       ),
                     ],
                   ),
@@ -107,7 +117,8 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Xin chào,',
-                          style: AppTextStyles.body.copyWith(color: subtext)),
+                          style:
+                          AppTextStyles.body.copyWith(color: subtext)),
                       const SizedBox(height: 4),
                       Text('Trang chủ của bạn',
                           style: AppTextStyles.h1.copyWith(color: fg)),
@@ -133,10 +144,12 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                       Row(children: [
                         Expanded(
                           child: _AlertCard(
-                            label: 'Hóa đơn chưa TT',
-                            count: unpaidCount,
+                            label: 'Chưa thanh toán',
+                            count: unpaidCount + overdueCount,
                             icon: Icons.receipt_long_outlined,
-                            color: AppColors.invoiceUnpaid,
+                            color: overdueCount > 0
+                                ? AppColors.error
+                                : AppColors.warning,
                             onTap: () => context.push('/tenant/invoices'),
                             isDark: isDark,
                           ),
@@ -159,7 +172,7 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                       Text('Truy cập nhanh',
                           style: AppTextStyles.h3.copyWith(color: fg)),
                       const SizedBox(height: 12),
-                      _QuickActions(),
+                      const _QuickActions(),
                       const SizedBox(height: 32),
                     ]),
                   ),
@@ -175,77 +188,157 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
 
 // ── Current Room Card ────────────────────────────────────────
 class _CurrentRoomCard extends StatelessWidget {
-  final dynamic contract;
+  final ContractModel? contract;
   final bool isDark;
+
   const _CurrentRoomCard({this.contract, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+
     if (contract == null) {
       return AppCard(
         child: Row(children: [
-          const Icon(Icons.meeting_room_outlined, color: AppColors.accent),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: subtext.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.meeting_room_outlined, color: subtext),
+          ),
           const SizedBox(width: 12),
-          Text('Chưa có phòng đang thuê',
-              style: AppTextStyles.body.copyWith(color: subtext)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Chưa có hợp đồng',
+                    style: AppTextStyles.body
+                        .copyWith(color: fg, fontWeight: FontWeight.w600)),
+                Text('Liên hệ chủ trọ để ký hợp đồng',
+                    style: AppTextStyles.bodySmall.copyWith(color: subtext)),
+              ],
+            ),
+          ),
         ]),
       );
     }
+
+    // Tính ngày còn lại
+    final endDate = DateTime.tryParse(contract!.endDate);
+    final daysLeft =
+    endDate != null ? endDate.difference(DateTime.now()).inDays : null;
+    final expiringSoon = daysLeft != null && daysLeft <= 30 && daysLeft >= 0;
+
     return AppCard(
       featured: true,
       onTap: () => context.push('/tenant/contract'),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.accent.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.meeting_room_outlined,
+                  color: AppColors.accent),
             ),
-            child: const Icon(Icons.meeting_room_outlined, color: AppColors.accent),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Phòng ${contract.roomCode}',
-                  style: AppTextStyles.h3.copyWith(
-                      color: isDark ? AppColors.darkFg : AppColors.lightFg)),
-              Text(contract.areaName,
-                  style: AppTextStyles.bodySmall.copyWith(color: subtext)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Phòng ${contract!.roomCode}',
+                    style: AppTextStyles.h3.copyWith(color: fg),
+                  ),
+                  Text(
+                    contract!.areaName,
+                    style: AppTextStyles.bodySmall.copyWith(color: subtext),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            StatusBadge(status: contract!.status),
+          ]),
+          const SizedBox(height: 14),
+          Divider(color: border, height: 1),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Giá thuê',
+                      style: AppTextStyles.caption.copyWith(color: subtext)),
+                  const SizedBox(height: 2),
+                  Text(
+                    CurrencyUtils.format(contract!.actualRentPrice),
+                    style: AppTextStyles.body.copyWith(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            if (daysLeft != null) ...[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('Kết thúc HĐ',
+                        style:
+                        AppTextStyles.caption.copyWith(color: subtext)),
+                    const SizedBox(height: 2),
+                    Text(
+                      AppDateUtils.formatDate(contract!.endDate),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: expiringSoon ? AppColors.warning : fg,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
-          )),
-          StatusBadge(status: contract.status),
-        ]),
-        const SizedBox(height: 12),
-        Row(children: [
-          _InfoChip(Icons.attach_money_rounded,
-              CurrencyUtils.format(contract.actualRentPrice.toDouble()),
-              AppColors.accent),
-          const SizedBox(width: 16),
-          _InfoChip(Icons.calendar_today_outlined,
-              'HĐ đến ${AppDateUtils.formatDate(contract.endDate.toString())}',
-              subtext),
-        ]),
-      ]),
+          ]),
+          if (expiringSoon) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border:
+                Border.all(color: AppColors.warning.withOpacity(0.3)),
+              ),
+              child: Row(children: [
+                const Icon(Icons.warning_amber_rounded,
+                    size: 14, color: AppColors.warning),
+                const SizedBox(width: 6),
+                Text(
+                  'Còn $daysLeft ngày hết hạn — liên hệ chủ trọ để gia hạn',
+                  style: AppTextStyles.caption.copyWith(
+                      color: AppColors.warning,
+                      fontWeight: FontWeight.w600),
+                ),
+              ]),
+            ),
+          ],
+        ],
+      ),
     );
   }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  const _InfoChip(this.icon, this.label, this.color);
-  @override
-  Widget build(BuildContext context) => Row(children: [
-    Icon(icon, size: 14, color: color),
-    const SizedBox(width: 4),
-    Text(label,
-        style: AppTextStyles.bodySmall
-            .copyWith(color: color, fontWeight: FontWeight.w600)),
-  ]);
 }
 
 // ── Alert Card ───────────────────────────────────────────────
@@ -256,20 +349,28 @@ class _AlertCard extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
   final bool isDark;
+
   const _AlertCard({
-    required this.label, required this.count, required this.icon,
-    required this.color, required this.onTap, required this.isDark,
+    required this.label,
+    required this.count,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    required this.isDark,
   });
+
   @override
   Widget build(BuildContext context) {
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     return AppCard(
-      onTap: onTap, featured: count > 0,
+      onTap: onTap,
+      featured: count > 0,
       padding: const EdgeInsets.all(14),
       child: Row(children: [
         Container(
-          width: 38, height: 38,
+          width: 38,
+          height: 38,
           decoration: BoxDecoration(
             color: color.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
@@ -277,12 +378,21 @@ class _AlertCard extends StatelessWidget {
           child: Icon(icon, color: color, size: 18),
         ),
         const SizedBox(width: 10),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('$count', style: AppTextStyles.h3.copyWith(color: fg)),
-          Text(label,
-              style: AppTextStyles.caption.copyWith(color: subtext),
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-        ])),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$count',
+                  style: AppTextStyles.h3.copyWith(color: fg)),
+              Text(
+                label,
+                style: AppTextStyles.caption.copyWith(color: subtext),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ]),
     );
   }
@@ -290,24 +400,30 @@ class _AlertCard extends StatelessWidget {
 
 // ── Quick Actions ────────────────────────────────────────────
 class _QuickActions extends StatelessWidget {
-  final _actions = const [
-    _Action(Icons.receipt_long_outlined,   'Hóa đơn',   '/tenant/invoices'),
-    _Action(Icons.description_outlined,    'Hợp đồng',  '/tenant/contract'),
-    _Action(Icons.report_outlined,         'Khiếu nại', '/tenant/issues'),
-    _Action(Icons.chat_bubble_outline,     'Chatbot',   '/tenant/chatbot'),
-    _Action(Icons.notifications_outlined,  'Thông báo', '/tenant/notifications'),
-    _Action(Icons.person_outline_rounded,  'Hồ sơ',     '/tenant/profile'),
-  ];
   const _QuickActions();
+
+  static const _actions = [
+    _Action(Icons.receipt_long_outlined, 'Hóa đơn', '/tenant/invoices'),
+    _Action(Icons.description_outlined, 'Hợp đồng', '/tenant/contract'),
+    _Action(Icons.report_outlined, 'Khiếu nại', '/tenant/issues'),
+    _Action(Icons.chat_bubble_outline, 'Chatbot', '/tenant/chatbot'),
+    _Action(
+        Icons.notifications_outlined, 'Thông báo', '/tenant/notifications'),
+    _Action(Icons.person_outline_rounded, 'Hồ sơ', '/tenant/profile'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3, mainAxisSpacing: 12, crossAxisSpacing: 12,
+        crossAxisCount: 3,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
         childAspectRatio: 1,
       ),
       itemCount: _actions.length,
@@ -316,26 +432,36 @@ class _QuickActions extends StatelessWidget {
         return AppCard(
           onTap: () => context.push(a.route),
           padding: const EdgeInsets.all(12),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.accent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(a.icon, color: AppColors.accent, size: 22),
               ),
-              child: Icon(a.icon, color: AppColors.accent, size: 22),
-            ),
-            const SizedBox(height: 8),
-            Text(a.label,
+              const SizedBox(height: 8),
+              Text(
+                a.label,
                 style: AppTextStyles.caption.copyWith(color: fg),
-                textAlign: TextAlign.center),
-          ]),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
+
 class _Action {
-  final IconData icon; final String label; final String route;
+  final IconData icon;
+  final String label;
+  final String route;
+
   const _Action(this.icon, this.label, this.route);
 }

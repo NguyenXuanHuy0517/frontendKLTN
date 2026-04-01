@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../data/models/invoice_model.dart';
-import '../data/services/invoice_service.dart';
-import '../data/services/api_client.dart';
+
 import '../core/constants/api_constants.dart';
+import '../data/models/invoice_model.dart';
+import '../data/services/api_client.dart';
+import '../data/services/invoice_service.dart';
 
 class InvoiceProvider extends ChangeNotifier {
   final _service = InvoiceService();
@@ -18,11 +19,9 @@ class InvoiceProvider extends ChangeNotifier {
   String? get error => _error;
 
   List<InvoiceModel> get unpaidInvoices =>
-      _invoices.where((i) => i.status == 'UNPAID').toList();
+      _invoices.where((invoice) => invoice.status == 'UNPAID').toList();
   List<InvoiceModel> get overdueInvoices =>
-      _invoices.where((i) => i.status == 'OVERDUE').toList();
-
-  // ── HOST methods ─────────────────────────────────────────
+      _invoices.where((invoice) => invoice.status == 'OVERDUE').toList();
 
   Future<void> fetchInvoices(int hostId) async {
     _loading = true;
@@ -49,7 +48,9 @@ class InvoiceProvider extends ChangeNotifier {
   }
 
   Future<bool> updateMeterReading(
-      int invoiceId, Map<String, dynamic> data) async {
+    int invoiceId,
+    Map<String, dynamic> data,
+  ) async {
     try {
       _selected = await _service.updateMeterReading(invoiceId, data);
       notifyListeners();
@@ -64,9 +65,9 @@ class InvoiceProvider extends ChangeNotifier {
   Future<bool> confirmPayment(int invoiceId, int paidById) async {
     try {
       await _service.confirmPayment(invoiceId, paidById);
-      final idx = _invoices.indexWhere((i) => i.invoiceId == invoiceId);
-      if (idx != -1) {
-        _invoices.removeAt(idx);
+      final index = _invoices.indexWhere((item) => item.invoiceId == invoiceId);
+      if (index != -1) {
+        _invoices.removeAt(index);
         notifyListeners();
       }
       return true;
@@ -77,20 +78,17 @@ class InvoiceProvider extends ChangeNotifier {
     }
   }
 
-  // ── TENANT methods ────────────────────────────────────────
-
-  /// Lấy danh sách hóa đơn của người thuê (tenant-service)
   Future<void> fetchInvoicesByTenant(int userId) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
-      final res = await ApiClient.instance.tenantDio.get(
+      final response = await ApiClient.instance.tenantDio.get(
         ApiConstants.tenantInvoices,
         queryParameters: {'userId': userId},
       );
-      _invoices = (res.data['data'] as List)
-          .map((e) => InvoiceModel.fromJson(e))
+      _invoices = (response.data['data'] as List)
+          .map((item) => InvoiceModel.fromJson(item))
           .toList();
     } catch (e) {
       _error = 'Không tải được danh sách hóa đơn';
@@ -100,14 +98,13 @@ class InvoiceProvider extends ChangeNotifier {
     }
   }
 
-  /// Xem chi tiết hóa đơn (tenant-service)
   Future<void> fetchInvoiceDetailByTenant(int invoiceId, int userId) async {
     try {
-      final res = await ApiClient.instance.tenantDio.get(
+      final response = await ApiClient.instance.tenantDio.get(
         '${ApiConstants.tenantInvoices}/$invoiceId',
         queryParameters: {'userId': userId},
       );
-      _selected = InvoiceDetailModel.fromJson(res.data['data']);
+      _selected = InvoiceDetailModel.fromJson(response.data['data']);
       notifyListeners();
     } catch (e) {
       _error = 'Không tải được chi tiết hóa đơn';

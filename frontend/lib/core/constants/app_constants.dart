@@ -39,6 +39,7 @@ class AppConstants {
   static const String priorityUrgent = 'URGENT';
 
   // Role
+  static const String roleAdmin = 'ADMIN';
   static const String roleHost = 'HOST';
   static const String roleTenant = 'TENANT';
 }

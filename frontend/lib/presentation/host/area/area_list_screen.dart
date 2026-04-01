@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_card.dart';
@@ -52,7 +53,11 @@ class _AreaListScreenState extends State<AreaListScreen> {
         title: Text('Khu trọ', style: AppTextStyles.h3.copyWith(color: fg)),
         actions: [
           IconButton(
-            icon: Icon(Icons.add_rounded, color: AppColors.accent, size: 26),
+            icon: const Icon(
+              Icons.add_rounded,
+              color: AppColors.accent,
+              size: 26,
+            ),
             onPressed: () => context.push('/host/areas/new'),
           ),
         ],
@@ -72,7 +77,7 @@ class _AreaListScreenState extends State<AreaListScreen> {
               child: ListView.separated(
                 padding: const EdgeInsets.all(24),
                 itemCount: area.areas.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, index) => const SizedBox(height: 12),
                 itemBuilder: (_, i) =>
                     _AreaCard(area: area.areas[i], isDark: isDark),
               ),
@@ -85,6 +90,7 @@ class _AreaListScreenState extends State<AreaListScreen> {
 class _AreaCard extends StatelessWidget {
   final AreaModel area;
   final bool isDark;
+
   const _AreaCard({required this.area, required this.isDark});
 
   @override
@@ -97,14 +103,13 @@ class _AreaCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.1),
+                  color: AppColors.accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -129,11 +134,9 @@ class _AreaCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      [
-                        area.ward,
-                        area.district,
-                        area.city,
-                      ].where((e) => e != null && e.isNotEmpty).join(', '),
+                      [area.ward, area.district, area.city]
+                          .where((value) => value != null && value.isNotEmpty)
+                          .join(', '),
                       style: AppTextStyles.bodySmall.copyWith(color: subtext),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -144,15 +147,12 @@ class _AreaCard extends StatelessWidget {
               Icon(Icons.edit_outlined, size: 18, color: subtext),
             ],
           ),
-
           const SizedBox(height: 16),
           Divider(
             color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
             height: 1,
           ),
           const SizedBox(height: 16),
-
-          // Room stats
           Row(
             children: [
               _RoomStat(
@@ -177,29 +177,56 @@ class _AreaCard extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // View rooms button
-          GestureDetector(
-            onTap: () => context.push('/host/rooms?areaId=${area.areaId}'),
-            child: Row(
-              children: [
-                Text(
-                  'Xem danh sách phòng',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.accent,
-                    fontWeight: FontWeight.w600,
-                  ),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => context.push('/host/rooms?areaId=${area.areaId}'),
+                child: Row(
+                  children: [
+                    Text(
+                      'Xem danh sách phòng',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: AppColors.accent,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 16,
-                  color: AppColors.accent,
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => context.push(
+                  Uri(
+                    path: '/host/areas/${area.areaId}/services',
+                    queryParameters: {'areaName': area.areaName},
+                  ).toString(),
                 ),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Quản lý dịch vụ',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.miscellaneous_services_outlined,
+                      size: 16,
+                      color: AppColors.success,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -211,6 +238,7 @@ class _RoomStat extends StatelessWidget {
   final String label;
   final int value;
   final Color color;
+
   const _RoomStat({
     required this.label,
     required this.value,

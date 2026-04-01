@@ -115,7 +115,7 @@ class _TenantContractScreenState extends State<TenantContractScreen> {
                   _InfoRow('Kết thúc',
                       AppDateUtils.formatDate(c.endDate),
                       expireSoon ? AppColors.warning : fg),
-                  if (expireSoon && daysLeft! >= 0) ...[
+                  if (expireSoon && daysLeft >= 0) ...[
                     const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.symmetric(

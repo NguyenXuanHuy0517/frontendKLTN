@@ -7,7 +7,6 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../../../providers/auth_provider.dart';
 import '../../../providers/tenant_provider.dart';
 
 class TenantDetailScreen extends StatefulWidget {

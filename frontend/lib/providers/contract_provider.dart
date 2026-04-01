@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../data/models/contract_model.dart';
-import '../data/services/contract_service.dart';
-import '../data/services/api_client.dart';
+
 import '../core/constants/api_constants.dart';
+import '../data/models/contract_model.dart';
+import '../data/services/api_client.dart';
+import '../data/services/contract_service.dart';
 
 class ContractProvider extends ChangeNotifier {
   final _service = ContractService();
@@ -18,18 +19,15 @@ class ContractProvider extends ChangeNotifier {
   String? get error => _error;
 
   List<ContractModel> get activeContracts =>
-      _contracts.where((c) => c.status == 'ACTIVE').toList();
+      _contracts.where((contract) => contract.status == 'ACTIVE').toList();
 
-  /// Hợp đồng ACTIVE hiện tại (dùng cho tenant dashboard)
   ContractModel? get currentContract {
     try {
-      return _contracts.firstWhere((c) => c.status == 'ACTIVE');
+      return _contracts.firstWhere((contract) => contract.status == 'ACTIVE');
     } catch (_) {
       return null;
     }
   }
-
-  // ── HOST methods ─────────────────────────────────────────
 
   Future<void> fetchContracts(int hostId) async {
     _loading = true;
@@ -71,9 +69,9 @@ class ContractProvider extends ChangeNotifier {
   Future<bool> extendContract(int contractId, String newEndDate) async {
     try {
       final updated = await _service.extendContract(contractId, newEndDate);
-      final idx = _contracts.indexWhere((c) => c.contractId == contractId);
-      if (idx != -1) {
-        _contracts[idx] = updated;
+      final index = _contracts.indexWhere((item) => item.contractId == contractId);
+      if (index != -1) {
+        _contracts[index] = updated;
         notifyListeners();
       }
       return true;
@@ -87,9 +85,9 @@ class ContractProvider extends ChangeNotifier {
   Future<bool> terminateContract(int contractId, int terminatedById) async {
     try {
       await _service.terminateContract(contractId, terminatedById);
-      final idx = _contracts.indexWhere((c) => c.contractId == contractId);
-      if (idx != -1) {
-        _contracts.removeAt(idx);
+      final index = _contracts.indexWhere((item) => item.contractId == contractId);
+      if (index != -1) {
+        _contracts.removeAt(index);
         notifyListeners();
       }
       return true;
@@ -100,21 +98,17 @@ class ContractProvider extends ChangeNotifier {
     }
   }
 
-  // ── TENANT methods ────────────────────────────────────────
-
-  /// Lấy danh sách hợp đồng của người thuê (tenant-service)
   Future<void> fetchContractsByTenant(int userId) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
-      final res = await ApiClient.instance.tenantDio.get(
+      final response = await ApiClient.instance.tenantDio.get(
         ApiConstants.tenantContracts,
         queryParameters: {'userId': userId},
       );
-      // tenant-service trả về MyContractDTO, map sang ContractModel
-      _contracts = (res.data['data'] as List)
-          .map((e) => ContractModel.fromTenantJson(e))
+      _contracts = (response.data['data'] as List)
+          .map((item) => ContractModel.fromTenantJson(item))
           .toList();
     } catch (e) {
       _error = 'Không tải được danh sách hợp đồng';

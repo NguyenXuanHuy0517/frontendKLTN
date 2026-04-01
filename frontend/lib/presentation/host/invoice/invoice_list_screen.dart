@@ -107,10 +107,10 @@ class _InvoiceListScreenState extends State<InvoiceListScreen>
               child: ListView.separated(
                 padding: const EdgeInsets.all(24),
                 itemCount: list.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (context, separatorIndex) =>
                 const SizedBox(height: 12),
-                itemBuilder: (_, idx) => _InvoiceCard(
-                  invoice: list[idx],
+                itemBuilder: (context, index) => _InvoiceCard(
+                  invoice: list[index],
                   isDark: isDark,
                 ),
               ),
@@ -118,7 +118,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen>
           },
         ),
       ),
-      bottomNavigationBar: const HostBottomNav(currentIndex: 2),
+      bottomNavigationBar: const HostBottomNav(currentIndex: 3),
     );
   }
 }
@@ -162,7 +162,7 @@ class _InvoiceCard extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(

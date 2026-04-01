@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../data/models/user_model.dart';
 import '../data/services/auth_service.dart';
 
@@ -14,13 +15,13 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
   bool get isLoggedIn => _user != null;
 
-  void _setLoading(bool v) {
-    _loading = v;
+  void _setLoading(bool value) {
+    _loading = value;
     notifyListeners();
   }
 
-  void _setError(String? v) {
-    _error = v;
+  void _setError(String? value) {
+    _error = value;
     notifyListeners();
   }
 
@@ -45,6 +46,7 @@ class AuthProvider extends ChangeNotifier {
     required String password,
     required String phoneNumber,
     required String idCardNumber,
+    String accountType = 'TENANT',
   }) async {
     _setLoading(true);
     _setError(null);
@@ -55,6 +57,7 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         phoneNumber: phoneNumber,
         idCardNumber: idCardNumber,
+        accountType: accountType,
       );
       return true;
     } catch (e) {
@@ -79,6 +82,23 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    _setLoading(true);
+    _setError(null);
+    try {
+      await _service.resetPassword(token: token, newPassword: newPassword);
+      return true;
+    } catch (e) {
+      _setError(_parseError(e));
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<void> logout() async {
     await _service.logout();
     _user = null;
@@ -93,11 +113,15 @@ class AuthProvider extends ChangeNotifier {
 
   Future<int?> getUserId() => _service.getUserId();
 
-  String _parseError(dynamic e) {
-    final msg = e.toString();
-    if (msg.contains('401') || msg.contains('403')) return 'Email hoặc mật khẩu không đúng';
-    if (msg.contains('400')) return 'Thông tin không hợp lệ';
-    if (msg.contains('SocketException') || msg.contains('connection')) return 'Không có kết nối mạng';
+  String _parseError(dynamic error) {
+    final message = error.toString();
+    if (message.contains('401') || message.contains('403')) {
+      return 'Email hoặc mật khẩu không đúng';
+    }
+    if (message.contains('400')) return 'Thông tin không hợp lệ';
+    if (message.contains('SocketException') || message.contains('connection')) {
+      return 'Không có kết nối mạng';
+    }
     return 'Đã có lỗi xảy ra, vui lòng thử lại';
   }
 }

@@ -12,11 +12,14 @@ class ApiConstants {
   static String get baseAuthUrl   => 'http://$_host:8081';
   static String get baseHostUrl   => 'http://$_host:8082';
   static String get baseTenantUrl => 'http://$_host:8083';
+  static String get baseAdminUrl  => 'http://$_host:8084';
 
   // ── Auth ──────────────────────────────────────────────────
   static const String login           = '/api/auth/login';
-  static const String register        = '/api/auth/register';
+  static const String registerTenant  = '/api/auth/register/tenant';
+  static const String registerHost    = '/api/auth/register/host';
   static const String forgotPassword  = '/api/auth/forgot-password';
+  static const String resetPassword   = '/api/auth/reset-password';
 
   // ── Host ──────────────────────────────────────────────────
   static const String areas     = '/api/host/areas';
@@ -28,7 +31,14 @@ class ApiConstants {
   static const String invoices  = '/api/host/invoices';
   static const String issues    = '/api/host/issues';
   static const String reports   = '/api/host/reports/dashboard';
+  static const String hostNotifications = '/api/host/notifications';
   static const String hostAvatar = '/api/host/avatar';
+  static const String adminDashboard = '/api/admin/dashboard';
+  static const String adminHosts = '/api/admin/hosts';
+  static const String adminRooms = '/api/admin/rooms';
+  static const String adminRoomsWithoutInvoice =
+      '/api/admin/rooms/without-invoice';
+  static const String adminRevenue = '/api/admin/revenue';
 
   // ── Tenant ────────────────────────────────────────────────
   static const String tenantProfile       = '/api/tenant/profile';

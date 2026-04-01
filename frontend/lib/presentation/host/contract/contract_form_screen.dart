@@ -204,7 +204,7 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
 
     if (ok) {
       _showSuccess('Tao hop dong thanh cong');
-      context.pop();
+      Navigator.of(context).pop();
     } else {
       _showError(provider.error ?? 'Thao tac that bai');
     }
@@ -261,7 +261,7 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
         backgroundColor: bg,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: fg, size: 20),
-          onPressed: () => context.pop(),
+          onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           'Tao hop dong',

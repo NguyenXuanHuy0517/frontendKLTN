@@ -81,7 +81,6 @@ class _TenantFormScreenState extends State<TenantFormScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
-    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
     return Scaffold(
       backgroundColor: bg,

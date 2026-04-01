@@ -1,20 +1,30 @@
+// Màn hình tổng quan chính của host với số liệu, thao tác nhanh và điều hướng phụ.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../core/constants/storage_keys.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/currency_utils.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_empty.dart';
+import '../../../core/widgets/app_loading.dart';
+import '../../../core/widgets/app_popup_window.dart';
+import '../../../core/widgets/dashboard_clock_card.dart';
 import '../../../core/widgets/gradient_text.dart';
-import '../../../core/widgets/section_badge.dart';
 import '../../../core/widgets/host_bottom_nav.dart';
+import '../../../core/widgets/notification_badge.dart';
 import '../../../core/widgets/profile_bottom_sheet.dart';
+import '../../../core/widgets/section_badge.dart';
 import '../../../data/models/report_model.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/notification_badge_provider.dart';
 import '../../../providers/report_provider.dart';
 import '../../../providers/theme_provider.dart';
-import '../../../core/utils/currency_utils.dart';
+import '../area/area_form_screen.dart';
+import '../contract/contract_form_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -25,6 +35,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int? _hostId;
+  String _fullName = '';
 
   @override
   void initState() {
@@ -34,11 +45,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
-    _hostId = await auth.getUserId();
-    if (_hostId != null) {
-      if (!mounted) return;
-      context.read<ReportProvider>().fetchDashboard(_hostId!);
-    }
+    final hostId = await auth.getUserId();
+    final fullName = auth.user?.fullName.trim().isNotEmpty == true
+        ? auth.user!.fullName.trim()
+        : (await _readCachedFullName()).trim();
+
+    if (!mounted) return;
+    setState(() {
+      _hostId = hostId;
+      _fullName = fullName;
+    });
+
+    if (hostId == null) return;
+
+    await Future.wait([
+      context.read<ReportProvider>().fetchDashboard(hostId),
+      context.read<NotificationBadgeProvider>().refreshHost(hostId),
+    ]);
+  }
+
+  Future<String> _readCachedFullName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(StorageKeys.fullName) ?? '';
   }
 
   @override
@@ -47,27 +75,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-    final report = context.watch<ReportProvider>();
+    final reportProvider = context.watch<ReportProvider>();
+    final unreadCount = context
+        .watch<NotificationBadgeProvider>()
+        .hostUnreadCount;
 
     return Scaffold(
       backgroundColor: bg,
       body: SafeArea(
         child: RefreshIndicator(
           color: AppColors.accent,
-          onRefresh: () async {
-            if (_hostId != null) {
-              await context.read<ReportProvider>().fetchDashboard(_hostId!);
-            }
-          },
+          onRefresh: _load,
           child: CustomScrollView(
             slivers: [
-              // ── App Bar ─────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
                   child: Row(
                     children: [
-                      // Logo
                       Container(
                         width: 36,
                         height: 36,
@@ -92,7 +117,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         colors: AppColors.gradient,
                       ),
                       const Spacer(),
-                      // Theme toggle
                       IconButton(
                         icon: Icon(
                           isDark
@@ -104,16 +128,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onPressed: () =>
                             context.read<ThemeProvider>().toggleTheme(),
                       ),
-                      // Notification
                       IconButton(
-                        icon: Icon(
-                          Icons.notifications_outlined,
-                          color: subtext,
-                          size: 22,
+                        icon: NotificationBadge(
+                          showBadge: unreadCount > 0,
+                          child: Icon(
+                            Icons.notifications_outlined,
+                            color: subtext,
+                            size: 22,
+                          ),
                         ),
-                        onPressed: () {},
+                        onPressed: () async {
+                          final badgeProvider = context
+                              .read<NotificationBadgeProvider>();
+                          await context.push('/host/notifications');
+                          if (!mounted || _hostId == null) return;
+                          await badgeProvider.refreshHost(_hostId!);
+                        },
                       ),
-                      // Profile
                       IconButton(
                         icon: Icon(
                           Icons.person_outline_rounded,
@@ -126,8 +157,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
-
-              // ── Greeting ─────────────────────────────────
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
@@ -139,6 +168,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         style: AppTextStyles.body.copyWith(color: subtext),
                       ),
                       const SizedBox(height: 4),
+                      if (_fullName.isNotEmpty) ...[
+                        Text(
+                          _fullName,
+                          style: AppTextStyles.h2.copyWith(color: fg),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                       Text(
                         'Tổng quan hệ thống',
                         style: AppTextStyles.h1.copyWith(color: fg),
@@ -147,47 +183,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
-
-              // ── Content ───────────────────────────────────
-              if (report.loading)
-                const SliverFillRemaining(child: AppLoading())
-              else if (report.error != null)
+              if (reportProvider.loading)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: AppLoading(),
+                )
+              else if (reportProvider.error != null)
                 SliverFillRemaining(
+                  hasScrollBody: false,
                   child: AppEmpty(
-                    message: report.error!,
+                    message: reportProvider.error!,
                     icon: Icons.wifi_off_rounded,
                     actionLabel: 'Thử lại',
                     onAction: _load,
                   ),
                 )
-              else if (report.report == null)
+              else if (reportProvider.report == null)
                 const SliverFillRemaining(
-                  child: AppEmpty(message: 'Không có dữ liệu'),
+                  hasScrollBody: false,
+                  child: AppEmpty(
+                    message: 'Không có dữ liệu tổng quan để hiển thị.',
+                  ),
                 )
-              else ...[
+              else
                 SliverToBoxAdapter(
                   child: _buildBody(
                     context,
-                    report.report!,
+                    reportProvider.report!,
                     isDark,
                     fg,
                     subtext,
                   ),
                 ),
-              ],
             ],
           ),
         ),
       ),
-
-      // ── Bottom Nav ──────────────────────────────────────
       bottomNavigationBar: const HostBottomNav(currentIndex: 0),
     );
   }
 
   Widget _buildBody(
     BuildContext context,
-    ReportModel r,
+    ReportModel report,
     bool isDark,
     Color fg,
     Color subtext,
@@ -198,13 +236,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 28),
-
-          // ── Revenue card ─────────────────────────────────
-          _RevenueCard(report: r, isDark: isDark),
-
+          const Align(
+            alignment: Alignment.centerRight,
+            child: DashboardClockCard(),
+          ),
+          const SizedBox(height: 16),
+          _RevenueCard(report: report),
           const SizedBox(height: 20),
-
-          // ── Room stats ───────────────────────────────────
           Text('Tình trạng phòng', style: AppTextStyles.h3.copyWith(color: fg)),
           const SizedBox(height: 12),
           Row(
@@ -212,7 +250,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: _StatCard(
                   label: 'Tổng phòng',
-                  value: '${r.totalRooms}',
+                  value: '${report.totalRooms}',
                   icon: Icons.meeting_room_outlined,
                   color: AppColors.accent,
                   isDark: isDark,
@@ -222,7 +260,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: _StatCard(
                   label: 'Đang thuê',
-                  value: '${r.rentedRooms}',
+                  value: '${report.rentedRooms}',
                   icon: Icons.people_outline_rounded,
                   color: AppColors.roomRented,
                   isDark: isDark,
@@ -236,7 +274,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: _StatCard(
                   label: 'Còn trống',
-                  value: '${r.availableRooms}',
+                  value: '${report.availableRooms}',
                   icon: Icons.door_front_door_outlined,
                   color: AppColors.roomAvailable,
                   isDark: isDark,
@@ -246,7 +284,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: _StatCard(
                   label: 'Bảo trì',
-                  value: '${r.maintenanceRooms}',
+                  value: '${report.maintenanceRooms}',
                   icon: Icons.build_outlined,
                   color: AppColors.roomMaintenance,
                   isDark: isDark,
@@ -254,10 +292,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
-          // ── Alert cards ───────────────────────────────────
           Text('Cần xử lý', style: AppTextStyles.h3.copyWith(color: fg)),
           const SizedBox(height: 12),
           Row(
@@ -265,7 +300,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: _AlertCard(
                   label: 'Hóa đơn quá hạn',
-                  count: r.overdueCount,
+                  count: report.overdueCount,
                   icon: Icons.receipt_long_outlined,
                   color: AppColors.invoiceOverdue,
                   onTap: () => context.push('/host/invoices'),
@@ -276,7 +311,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: _AlertCard(
                   label: 'Khiếu nại mở',
-                  count: r.openIssueCount,
+                  count: report.openIssueCount,
                   icon: Icons.report_outlined,
                   color: AppColors.warning,
                   onTap: () => context.push('/host/issues'),
@@ -285,29 +320,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
-          // ── Occupancy bar ─────────────────────────────────
-          _OccupancyBar(rate: r.occupancyRate, isDark: isDark),
-
+          _OccupancyBar(rate: report.occupancyRate, isDark: isDark),
           const SizedBox(height: 20),
-
-          // ── Quick actions ─────────────────────────────────
+          Text('Tạo nhanh', style: AppTextStyles.h3.copyWith(color: fg)),
+          const SizedBox(height: 12),
+          _CreateQuickActions(onComplete: _load),
+          const SizedBox(height: 20),
           Text('Truy cập nhanh', style: AppTextStyles.h3.copyWith(color: fg)),
           const SizedBox(height: 12),
-          Text(
-            'Tao nhanh',
-            style: AppTextStyles.body.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          const _CreateQuickActions(),
-          const SizedBox(height: 20),
-          _QuickActions(),
-
+          const _QuickActions(),
           const SizedBox(height: 32),
         ],
       ),
@@ -315,12 +337,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ── Revenue Card ────────────────────────────────────────────
 class _RevenueCard extends StatelessWidget {
   final ReportModel report;
-  final bool isDark;
 
-  const _RevenueCard({required this.report, required this.isDark});
+  const _RevenueCard({required this.report});
 
   @override
   Widget build(BuildContext context) {
@@ -338,7 +358,7 @@ class _RevenueCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: AppColors.accent.withOpacity(0.3),
+            color: AppColors.accent.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -382,7 +402,6 @@ class _RevenueCard extends StatelessWidget {
   }
 }
 
-// ── Stat Card ────────────────────────────────────────────────
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
@@ -400,8 +419,8 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
     return AppCard(
       padding: const EdgeInsets.all(16),
@@ -412,7 +431,7 @@ class _StatCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 18),
@@ -427,7 +446,6 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ── Alert Card ───────────────────────────────────────────────
 class _AlertCard extends StatelessWidget {
   final String label;
   final int count;
@@ -447,8 +465,8 @@ class _AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
     return AppCard(
       onTap: onTap,
@@ -460,7 +478,7 @@ class _AlertCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -487,7 +505,6 @@ class _AlertCard extends StatelessWidget {
   }
 }
 
-// ── Occupancy Bar ────────────────────────────────────────────
 class _OccupancyBar extends StatelessWidget {
   final double rate;
   final bool isDark;
@@ -534,10 +551,10 @@ class _OccupancyBar extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             rate >= 80
-                ? 'Tốt — hầu hết phòng đã có người thuê'
+                ? 'Tốt, hầu hết phòng đã có người thuê.'
                 : rate >= 50
-                ? 'Trung bình — còn nhiều phòng trống'
-                : 'Thấp — cần tăng cường cho thuê',
+                ? 'Mức trung bình, vẫn còn nhiều phòng trống.'
+                : 'Tỷ lệ lấp đầy thấp, nên đẩy mạnh cho thuê.',
             style: AppTextStyles.caption.copyWith(color: subtext),
           ),
         ],
@@ -546,18 +563,23 @@ class _OccupancyBar extends StatelessWidget {
   }
 }
 
-// ── Quick Actions ────────────────────────────────────────────
 class _QuickActions extends StatelessWidget {
-  final _actions = const [
+  const _QuickActions();
+
+  static const _actions = [
     _Action(Icons.meeting_room_outlined, 'Phòng trọ', '/host/rooms'),
     _Action(Icons.people_outline_rounded, 'Người thuê', '/host/tenants'),
     _Action(Icons.description_outlined, 'Hợp đồng', '/host/contracts'),
     _Action(Icons.receipt_long_outlined, 'Hóa đơn', '/host/invoices'),
     _Action(Icons.location_city_outlined, 'Khu trọ', '/host/areas'),
     _Action(Icons.savings_outlined, 'Đặt cọc', '/host/deposits'),
+    _Action(Icons.notifications_outlined, 'Thông báo', '/host/notifications'),
+    _Action(
+      Icons.campaign_outlined,
+      'Gửi thông báo',
+      '/host/notifications/send',
+    ),
   ];
-
-  const _QuickActions();
 
   @override
   Widget build(BuildContext context) {
@@ -571,11 +593,11 @@ class _QuickActions extends StatelessWidget {
         crossAxisCount: 3,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 1,
+        mainAxisExtent: 112,
       ),
       itemCount: _actions.length,
-      itemBuilder: (context, i) {
-        final action = _actions[i];
+      itemBuilder: (context, index) {
+        final action = _actions[index];
         return AppCard(
           onTap: () => context.push(action.route),
           padding: const EdgeInsets.all(12),
@@ -607,27 +629,40 @@ class _QuickActions extends StatelessWidget {
 }
 
 class _CreateQuickActions extends StatelessWidget {
-  const _CreateQuickActions();
+  final Future<void> Function()? onComplete;
+
+  const _CreateQuickActions({this.onComplete});
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
+      children: [
         Expanded(
           child: _CreateActionCard(
             icon: Icons.location_city_outlined,
-            title: 'Tao khu tro moi',
-            subtitle: 'Khoi tao khu truoc khi them phong',
-            route: '/host/areas/new',
+            title: 'Tạo khu trọ mới',
+            subtitle: 'Khởi tạo khu trước khi thêm phòng.',
+            onTap: () async {
+              await AppPopupWindow.show(context, child: const AreaFormScreen());
+              if (!context.mounted) return;
+              await onComplete?.call();
+            },
           ),
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Expanded(
           child: _CreateActionCard(
             icon: Icons.note_add_outlined,
-            title: 'Tao hop dong moi',
-            subtitle: 'Gan phong va nguoi thue nhanh hon',
-            route: '/host/contracts/new',
+            title: 'Tạo hợp đồng mới',
+            subtitle: 'Gán phòng và người thuê nhanh hơn.',
+            onTap: () async {
+              await AppPopupWindow.show(
+                context,
+                child: const ContractFormScreen(),
+              );
+              if (!context.mounted) return;
+              await onComplete?.call();
+            },
           ),
         ),
       ],
@@ -639,13 +674,13 @@ class _CreateActionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final String route;
+  final VoidCallback onTap;
 
   const _CreateActionCard({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.route,
+    required this.onTap,
   });
 
   @override
@@ -655,7 +690,7 @@ class _CreateActionCard extends StatelessWidget {
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
     return AppCard(
-      onTap: () => context.push(route),
+      onTap: onTap,
       featured: true,
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -690,71 +725,6 @@ class _Action {
   final IconData icon;
   final String label;
   final String route;
+
   const _Action(this.icon, this.label, this.route);
-}
-
-// ── Bottom Navigation ────────────────────────────────────────
-class _BottomNav extends StatelessWidget {
-  final int currentIndex;
-  const _BottomNav({required this.currentIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: bg,
-        border: Border(top: BorderSide(color: border)),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: currentIndex,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.accent,
-        unselectedItemColor: isDark
-            ? AppColors.darkSubtext
-            : AppColors.lightSubtext,
-        selectedLabelStyle: AppTextStyles.caption,
-        unselectedLabelStyle: AppTextStyles.caption,
-        onTap: (i) {
-          switch (i) {
-            case 0:
-              context.go('/host/dashboard');
-            case 1:
-              context.go('/host/rooms');
-            case 2:
-              context.go('/host/invoices');
-            case 3:
-              context.go('/host/issues');
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard_rounded),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.meeting_room_outlined),
-            activeIcon: Icon(Icons.meeting_room_rounded),
-            label: 'Phòng',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            activeIcon: Icon(Icons.receipt_long_rounded),
-            label: 'Hóa đơn',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.report_outlined),
-            activeIcon: Icon(Icons.report_rounded),
-            label: 'Khiếu nại',
-          ),
-        ],
-      ),
-    );
-  }
 }

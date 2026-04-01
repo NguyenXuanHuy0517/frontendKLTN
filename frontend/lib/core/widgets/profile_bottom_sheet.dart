@@ -1,3 +1,4 @@
+// Bottom sheet hiển thị thông tin tài khoản và các thao tác cá nhân cơ bản.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,7 @@ import '../theme/app_text_styles.dart';
 import 'app_button.dart';
 import 'confirm_dialog.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notification_badge_provider.dart';
 import '../../core/constants/storage_keys.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -48,6 +50,7 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
   }
 
   String _getRoleLabel(String? role) {
+    if (role == 'ADMIN') return 'Quản trị viên';
     if (role == 'HOST') return 'Chủ trọ';
     if (role == 'TENANT') return 'Người thuê';
     return role ?? 'Người dùng';
@@ -66,10 +69,22 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
     if (!mounted) return;
 
     if (confirmed == true) {
+      context.read<NotificationBadgeProvider>().reset();
       await context.read<AuthProvider>().logout();
       if (!mounted) return;
       context.go('/login');
     }
+  }
+
+  void _showFeatureMessage(String message) {
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
@@ -92,7 +107,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Row(
                 children: [
                   Text(
@@ -108,20 +122,20 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
               ),
               const SizedBox(height: 24),
 
-              // User Info Card
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: card,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : AppColors.lightBorder,
                   ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Avatar placeholder
                     Center(
                       child: Container(
                         width: 64,
@@ -143,7 +157,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Full name
                     Text(
                       'Họ và tên',
                       style: AppTextStyles.caption.copyWith(color: subtext),
@@ -155,7 +168,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Email
                     Text(
                       'Email',
                       style: AppTextStyles.caption.copyWith(color: subtext),
@@ -167,7 +179,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Role
                     Text(
                       'Vai trò',
                       style: AppTextStyles.caption.copyWith(color: subtext),
@@ -179,7 +190,7 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.accent.withOpacity(0.1),
+                        color: AppColors.accent.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -195,14 +206,12 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
               ),
               const SizedBox(height: 24),
 
-              // Menu items
               _buildMenuItem(
                 icon: Icons.person_outline_rounded,
                 title: 'Chỉnh sửa hồ sơ',
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Navigate to profile edit screen
-                },
+                onTap: () => _showFeatureMessage(
+                  'Tính năng chỉnh sửa hồ sơ sẽ sớm được bổ sung.',
+                ),
                 isDark: isDark,
                 fg: fg,
                 subtext: subtext,
@@ -210,10 +219,9 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
               _buildMenuItem(
                 icon: Icons.lock_outline_rounded,
                 title: 'Đổi mật khẩu',
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Navigate to change password screen
-                },
+                onTap: () => _showFeatureMessage(
+                  'Tính năng đổi mật khẩu sẽ sớm được bổ sung.',
+                ),
                 isDark: isDark,
                 fg: fg,
                 subtext: subtext,
@@ -221,17 +229,15 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
               _buildMenuItem(
                 icon: Icons.help_outline_rounded,
                 title: 'Trợ giúp & Hỗ trợ',
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Navigate to help screen
-                },
+                onTap: () => _showFeatureMessage(
+                  'Kênh trợ giúp và hỗ trợ sẽ sớm được cập nhật.',
+                ),
                 isDark: isDark,
                 fg: fg,
                 subtext: subtext,
               ),
               const SizedBox(height: 24),
 
-              // Logout button
               AppButton(
                 label: 'Đăng xuất',
                 onPressed: _handleLogout,

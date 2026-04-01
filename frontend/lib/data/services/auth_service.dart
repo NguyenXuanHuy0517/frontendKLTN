@@ -23,8 +23,12 @@ class AuthService {
     required String password,
     required String phoneNumber,
     required String idCardNumber,
+    String accountType = 'TENANT',
   }) async {
-    await _dio.post(ApiConstants.register, data: {
+    final endpoint = accountType.toUpperCase() == 'HOST'
+        ? ApiConstants.registerHost
+        : ApiConstants.registerTenant;
+    await _dio.post(endpoint, data: {
       'fullName': fullName,
       'email': email,
       'password': password,
@@ -37,6 +41,16 @@ class AuthService {
     await _dio.post(
       ApiConstants.forgotPassword,
       data: {'email': email},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _dio.post(
+      ApiConstants.resetPassword,
+      data: {'token': token, 'newPassword': newPassword},
     );
   }
 

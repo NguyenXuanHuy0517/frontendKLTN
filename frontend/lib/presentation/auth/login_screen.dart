@@ -34,7 +34,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final ok = await auth.login(_emailCtrl.text.trim(), _passCtrl.text);
     if (!mounted) return;
     if (ok) {
-      context.go('/host/dashboard');
+      final role = (auth.user?.role ?? '').toUpperCase();
+      if (role == 'ADMIN') {
+        context.go('/admin/dashboard');
+      } else if (role == 'TENANT') {
+        context.go('/tenant/dashboard');
+      } else {
+        context.go('/host/dashboard');
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

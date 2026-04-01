@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/api_constants.dart';
 import 'api_client.dart';
@@ -12,15 +11,17 @@ class AvatarUploadService {
   /// Upload ảnh avatar lên server và nhận về URL Cloudinary.
   /// [role] phải là 'HOST' hoặc 'TENANT'.
   Future<String> upload({
-    required File file,
+    required XFile file,
     required int userId,
     required String role,
   }) async {
+    final fileBytes = await file.readAsBytes();
+    final filename = file.name.isNotEmpty
+        ? file.name
+        : 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(
-        file.path,
-        filename: 'avatar_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      ),
+      'file': MultipartFile.fromBytes(fileBytes, filename: filename),
     });
 
     final dio      = role == 'HOST' ? _hostDio : _tenantDio;

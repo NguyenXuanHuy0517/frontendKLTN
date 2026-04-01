@@ -1,17 +1,30 @@
+// Thanh điều hướng dưới dành cho các màn hình chính của người thuê.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
+
+import '../theme/app_colors.dart';
+import '../theme/app_text_styles.dart';
 
 class TenantBottomNav extends StatelessWidget {
-  final int currentIndex;
   const TenantBottomNav({super.key, required this.currentIndex});
+
+  final int currentIndex;
+
+  static const List<String> _routes = [
+    '/tenant/dashboard',
+    '/tenant/invoices',
+    '/tenant/issues',
+    '/tenant/services',
+    '/tenant/chatbot',
+    '/tenant/profile',
+  ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkCard : AppColors.lightCard;
     final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final safeIndex = currentIndex.clamp(0, _routes.length - 1);
 
     return Container(
       decoration: BoxDecoration(
@@ -19,24 +32,17 @@ class TenantBottomNav extends StatelessWidget {
         border: Border(top: BorderSide(color: border)),
       ),
       child: BottomNavigationBar(
-        currentIndex: currentIndex < 0 ? 0 : currentIndex,
+        currentIndex: safeIndex,
         backgroundColor: Colors.transparent,
         elevation: 0,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.accent,
-        unselectedItemColor:
-        isDark ? AppColors.darkSubtext : AppColors.lightSubtext,
+        unselectedItemColor: isDark
+            ? AppColors.darkSubtext
+            : AppColors.lightSubtext,
         selectedLabelStyle: AppTextStyles.caption,
         unselectedLabelStyle: AppTextStyles.caption,
-        onTap: (i) {
-          switch (i) {
-            case 0: context.go('/tenant/dashboard');
-            case 1: context.go('/tenant/invoices');
-            case 2: context.go('/tenant/issues');
-            case 3: context.go('/tenant/chatbot');
-            case 4: context.go('/tenant/profile');
-          }
-        },
+        onTap: (index) => context.go(_routes[index]),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
@@ -52,6 +58,11 @@ class TenantBottomNav extends StatelessWidget {
             icon: Icon(Icons.report_outlined),
             activeIcon: Icon(Icons.report_rounded),
             label: 'Khiếu nại',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.miscellaneous_services_outlined),
+            activeIcon: Icon(Icons.miscellaneous_services_rounded),
+            label: 'Dịch vụ',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),

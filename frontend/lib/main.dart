@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
+import 'providers/admin_dashboard_provider.dart';
+import 'providers/admin_host_provider.dart';
+import 'providers/admin_revenue_provider.dart';
+import 'providers/admin_room_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/area_provider.dart';
 import 'providers/room_provider.dart';
@@ -11,6 +15,7 @@ import 'providers/invoice_provider.dart';
 import 'providers/issue_provider.dart';
 import 'providers/report_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/notification_badge_provider.dart';
 import 'app_router.dart';
 
 void main() async {
@@ -30,6 +35,10 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AdminDashboardProvider()),
+        ChangeNotifierProvider(create: (_) => AdminHostProvider()),
+        ChangeNotifierProvider(create: (_) => AdminRoomProvider()),
+        ChangeNotifierProvider(create: (_) => AdminRevenueProvider()),
         ChangeNotifierProvider(create: (_) => AreaProvider()),
         ChangeNotifierProvider(create: (_) => RoomProvider()),
         ChangeNotifierProvider(create: (_) => TenantProvider()),
@@ -38,6 +47,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => InvoiceProvider()),
         ChangeNotifierProvider(create: (_) => IssueProvider()),
         ChangeNotifierProvider(create: (_) => ReportProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationBadgeProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, theme, _) {

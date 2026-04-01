@@ -22,6 +22,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _idCardCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  String _accountType = 'TENANT';
 
   @override
   void dispose() {
@@ -43,6 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passCtrl.text,
       phoneNumber: _phoneCtrl.text.trim(),
       idCardNumber: _idCardCtrl.text.trim(),
+      accountType: _accountType,
     );
     if (!mounted) return;
     if (ok) {
@@ -109,6 +111,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
 
                 const SizedBox(height: 32),
+
+                Text(
+                  'Vai trÃ² tÃ i khoáº£n',
+                  style: AppTextStyles.label.copyWith(color: subtext),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('Người Thuê'),
+                        selected: _accountType == 'TENANT',
+                        onSelected: (_) =>
+                            setState(() => _accountType = 'TENANT'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('Chủ trọ'),
+                        selected: _accountType == 'HOST',
+                        onSelected: (_) =>
+                            setState(() => _accountType = 'HOST'),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
 
                 AppTextField(
                   label: 'Họ và tên',

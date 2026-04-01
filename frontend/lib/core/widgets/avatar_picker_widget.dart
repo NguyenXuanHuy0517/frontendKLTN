@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -51,7 +49,7 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
     try {
       final service = AvatarUploadService();
       final newUrl = await service.upload(
-        file: File(picked.path),
+        file: picked,
         userId: widget.userId,
         role: widget.role,
       );

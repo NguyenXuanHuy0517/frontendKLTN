@@ -26,8 +26,6 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     Widget child = loading
         ? const SizedBox(
       width: 20,

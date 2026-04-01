@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/currency_utils.dart';
+import '../../../core/utils/date_utils.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/confirm_dialog.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../../../core/utils/currency_utils.dart';
-import '../../../core/utils/date_utils.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/contract_provider.dart';
 
 class ContractDetailScreen extends StatefulWidget {
   final int contractId;
+
   const ContractDetailScreen({super.key, required this.contractId});
 
   @override
@@ -25,9 +27,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context
-          .read<ContractProvider>()
-          .fetchContractDetail(widget.contractId);
+      context.read<ContractProvider>().fetchContractDetail(widget.contractId);
     });
   }
 
@@ -36,7 +36,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
       context,
       title: 'Chấm dứt hợp đồng',
       message:
-      'Hợp đồng sẽ bị chấm dứt sớm và phòng sẽ được mở lại. Tiếp tục?',
+          'Hợp đồng sẽ bị chấm dứt sớm và phòng sẽ được mở lại. Tiếp tục?',
       destructive: true,
       confirmLabel: 'Chấm dứt',
     );
@@ -56,8 +56,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
           content: const Text('Chấm dứt hợp đồng thành công'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
       context.pop();
@@ -96,147 +95,186 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
       body: contract == null
           ? const AppLoading()
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Status banner ──────────────────────
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.accent.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: AppColors.accent.withOpacity(0.2)),
-              ),
+              padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          contract.tenantName,
-                          style:
-                          AppTextStyles.h3.copyWith(color: fg),
-                        ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.accent.withValues(alpha: 0.2),
                       ),
-                      StatusBadge(status: contract.status),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Phòng ${contract.roomCode} — ${contract.areaName}',
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: subtext),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    contract.contractCode,
-                    style: AppTextStyles.caption
-                        .copyWith(color: subtext),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // ── Thông tin hợp đồng ─────────────────
-            Text('Thông tin hợp đồng',
-                style: AppTextStyles.h3.copyWith(color: fg)),
-            const SizedBox(height: 12),
-            AppCard(
-              child: Column(
-                children: [
-                  _InfoRow(
-                    label: 'Giá thuê',
-                    value: CurrencyUtils.format(
-                        contract.actualRentPrice),
-                    valueColor: AppColors.accent,
-                    isDark: isDark,
-                  ),
-                  Divider(color: border, height: 24),
-                  _InfoRow(
-                    label: 'Ngày bắt đầu',
-                    value: AppDateUtils.formatDate(contract.startDate),
-                    isDark: isDark,
-                  ),
-                  Divider(color: border, height: 24),
-                  _InfoRow(
-                    label: 'Ngày kết thúc',
-                    value: AppDateUtils.formatDate(contract.endDate),
-                    isDark: isDark,
-                  ),
-                  if (contract.elecPriceOverride != null) ...[
-                    Divider(color: border, height: 24),
-                    _InfoRow(
-                      label: 'Giá điện riêng',
-                      value:
-                      '${CurrencyUtils.format(contract.elecPriceOverride!)}/kWh',
-                      isDark: isDark,
                     ),
-                  ],
-                  if (contract.waterPriceOverride != null) ...[
-                    Divider(color: border, height: 24),
-                    _InfoRow(
-                      label: 'Giá nước riêng',
-                      value:
-                      '${CurrencyUtils.format(contract.waterPriceOverride!)}/m³',
-                      isDark: isDark,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // ── Dịch vụ ───────────────────────────
-            if (contract.serviceNames.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Text('Dịch vụ đăng ký',
-                  style: AppTextStyles.h3.copyWith(color: fg)),
-              const SizedBox(height: 12),
-              AppCard(
-                child: Column(
-                  children: contract.serviceNames
-                      .map((s) => Padding(
-                    padding:
-                    const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.check_circle_outline,
-                            size: 16,
-                            color: AppColors.success),
-                        const SizedBox(width: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                contract.tenantName,
+                                style: AppTextStyles.h3.copyWith(color: fg),
+                              ),
+                            ),
+                            StatusBadge(status: contract.status),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
                         Text(
-                          s,
-                          style: AppTextStyles.body
-                              .copyWith(color: fg),
+                          'Phòng ${contract.roomCode} • ${contract.areaName}',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: subtext,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          contract.contractCode,
+                          style: AppTextStyles.caption.copyWith(color: subtext),
                         ),
                       ],
                     ),
-                  ))
-                      .toList(),
-                ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Thông tin hợp đồng',
+                    style: AppTextStyles.h3.copyWith(color: fg),
+                  ),
+                  const SizedBox(height: 12),
+                  AppCard(
+                    child: Column(
+                      children: [
+                        _InfoRow(
+                          label: 'Giá thuê',
+                          value: CurrencyUtils.format(contract.actualRentPrice),
+                          valueColor: AppColors.accent,
+                          isDark: isDark,
+                        ),
+                        Divider(color: border, height: 24),
+                        _InfoRow(
+                          label: 'Ngày bắt đầu',
+                          value: AppDateUtils.formatDate(contract.startDate),
+                          isDark: isDark,
+                        ),
+                        Divider(color: border, height: 24),
+                        _InfoRow(
+                          label: 'Ngày kết thúc',
+                          value: AppDateUtils.formatDate(contract.endDate),
+                          isDark: isDark,
+                        ),
+                        if (contract.elecPriceOverride != null) ...[
+                          Divider(color: border, height: 24),
+                          _InfoRow(
+                            label: 'Giá điện riêng',
+                            value:
+                                '${CurrencyUtils.format(contract.elecPriceOverride!)}/kWh',
+                            isDark: isDark,
+                          ),
+                        ],
+                        if (contract.waterPriceOverride != null) ...[
+                          Divider(color: border, height: 24),
+                          _InfoRow(
+                            label: 'Giá nước riêng',
+                            value:
+                                '${CurrencyUtils.format(contract.waterPriceOverride!)}/m³',
+                            isDark: isDark,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (contract.contractServices.isNotEmpty ||
+                      contract.serviceNames.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Dịch vụ đăng ký',
+                      style: AppTextStyles.h3.copyWith(color: fg),
+                    ),
+                    const SizedBox(height: 12),
+                    AppCard(
+                      child: Column(
+                        children: contract.contractServices.isNotEmpty
+                            ? contract.contractServices
+                                .map(
+                                  (service) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 6,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle_outline,
+                                          size: 16,
+                                          color: AppColors.success,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            service.quantity > 1
+                                                ? '${service.serviceName} x${service.quantity}'
+                                                : service.serviceName,
+                                            style: AppTextStyles.body.copyWith(
+                                              color: fg,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          '${CurrencyUtils.format(service.displayPrice)}/${service.displayUnit}',
+                                          style:
+                                              AppTextStyles.bodySmall.copyWith(
+                                            color: AppColors.accent,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                                .toList()
+                            : contract.serviceNames
+                                .map(
+                                  (serviceName) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 6,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle_outline,
+                                          size: 16,
+                                          color: AppColors.success,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          serviceName,
+                                          style: AppTextStyles.body.copyWith(
+                                            color: fg,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                      ),
+                    ),
+                  ],
+                  if (contract.status == 'ACTIVE') ...[
+                    const SizedBox(height: 24),
+                    _ActionBtn(
+                      label: 'Gia hạn hợp đồng',
+                      icon: Icons.update_rounded,
+                      color: AppColors.accent,
+                      onTap: () => _showExtendDialog(context),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                ],
               ),
-            ],
-
-            // ── Actions ────────────────────────────
-            if (contract.status == 'ACTIVE') ...[
-              const SizedBox(height: 24),
-              _ActionBtn(
-                label: 'Gia hạn hợp đồng',
-                icon: Icons.update_rounded,
-                color: AppColors.accent,
-                onTap: () => _showExtendDialog(context),
-              ),
-            ],
-
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
+            ),
     );
   }
 
@@ -247,27 +285,28 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Gia hạn hợp đồng'),
         content: StatefulBuilder(
-          builder: (ctx, setState) => Column(
+          builder: (dialogContext, setDialogState) => Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Chọn ngày kết thúc mới:'),
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 icon: const Icon(Icons.calendar_today_outlined),
-                label: Text(newEndDate != null
-                    ? AppDateUtils.formatDate(newEndDate!.toIso8601String())
-                    : 'Chọn ngày'),
+                label: Text(
+                  newEndDate != null
+                      ? AppDateUtils.formatDate(newEndDate!.toIso8601String())
+                      : 'Chọn ngày',
+                ),
                 onPressed: () async {
                   final picked = await showDatePicker(
-                    context: ctx,
-                    initialDate:
-                    DateTime.now().add(const Duration(days: 30)),
+                    context: dialogContext,
+                    initialDate: DateTime.now().add(const Duration(days: 30)),
                     firstDate: DateTime.now(),
-                    lastDate: DateTime.now()
-                        .add(const Duration(days: 365 * 3)),
+                    lastDate:
+                        DateTime.now().add(const Duration(days: 365 * 3)),
                   );
                   if (picked != null) {
-                    setState(() => newEndDate = picked);
+                    setDialogState(() => newEndDate = picked);
                   }
                 },
               ),
@@ -277,28 +316,28 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Huỷ'),
+            child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () async {
               if (newEndDate == null) return;
               Navigator.pop(ctx);
-              final ok = await context
-                  .read<ContractProvider>()
-                  .extendContract(
-                widget.contractId,
-                newEndDate!.toIso8601String().split('T')[0],
-              );
+              final ok = await context.read<ContractProvider>().extendContract(
+                    widget.contractId,
+                    newEndDate!.toIso8601String().split('T')[0],
+                  );
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                      ok ? 'Gia hạn thành công' : 'Gia hạn thất bại'),
+                    ok ? 'Gia hạn thành công' : 'Gia hạn thất bại',
+                  ),
                   backgroundColor:
-                  ok ? AppColors.success : AppColors.error,
+                      ok ? AppColors.success : AppColors.error,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               );
             },
@@ -331,8 +370,7 @@ class _InfoRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label,
-            style: AppTextStyles.body.copyWith(color: subtext)),
+        Text(label, style: AppTextStyles.body.copyWith(color: subtext)),
         Text(
           value,
           style: AppTextStyles.body.copyWith(
@@ -366,9 +404,9 @@ class _ActionBtn extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

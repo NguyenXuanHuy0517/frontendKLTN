@@ -61,22 +61,22 @@ class _AreaListScreenState extends State<AreaListScreen> {
           ? const AppLoading()
           : area.areas.isEmpty
           ? AppEmpty(
-        message: 'Chưa có khu trọ nào',
-        icon: Icons.location_city_outlined,
-        actionLabel: 'Thêm khu trọ',
-        onAction: () => context.push('/host/areas/new'),
-      )
+              message: 'Chưa có khu trọ nào',
+              icon: Icons.location_city_outlined,
+              actionLabel: 'Thêm khu trọ',
+              onAction: () => context.push('/host/areas/new'),
+            )
           : RefreshIndicator(
-        color: AppColors.accent,
-        onRefresh: _load,
-        child: ListView.separated(
-          padding: const EdgeInsets.all(24),
-          itemCount: area.areas.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (_, i) =>
-              _AreaCard(area: area.areas[i], isDark: isDark),
-        ),
-      ),
+              color: AppColors.accent,
+              onRefresh: _load,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(24),
+                itemCount: area.areas.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (_, i) =>
+                    _AreaCard(area: area.areas[i], isDark: isDark),
+              ),
+            ),
       bottomNavigationBar: const HostBottomNav(currentIndex: 0),
     );
   }
@@ -120,38 +120,36 @@ class _AreaCard extends StatelessWidget {
                   children: [
                     Text(
                       area.areaName,
-                      style: AppTextStyles.body
-                          .copyWith(color: fg, fontWeight: FontWeight.w600),
+                      style: AppTextStyles.body.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w600,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      [area.ward, area.district, area.city]
-                          .where((e) => e != null && e.isNotEmpty)
-                          .join(', '),
-                      style:
-                      AppTextStyles.bodySmall.copyWith(color: subtext),
+                      [
+                        area.ward,
+                        area.district,
+                        area.city,
+                      ].where((e) => e != null && e.isNotEmpty).join(', '),
+                      style: AppTextStyles.bodySmall.copyWith(color: subtext),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.edit_outlined,
-                size: 18,
-                color: subtext,
-              ),
+              Icon(Icons.edit_outlined, size: 18, color: subtext),
             ],
           ),
 
           const SizedBox(height: 16),
           Divider(
-              color: isDark
-                  ? AppColors.darkBorder
-                  : AppColors.lightBorder,
-              height: 1),
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            height: 1,
+          ),
           const SizedBox(height: 16),
 
           // Room stats
@@ -184,10 +182,7 @@ class _AreaCard extends StatelessWidget {
 
           // View rooms button
           GestureDetector(
-            onTap: () => context.push(
-              '/host/rooms',
-              extra: {'areaId': area.areaId},
-            ),
+            onTap: () => context.push('/host/rooms?areaId=${area.areaId}'),
             child: Row(
               children: [
                 Text(
@@ -216,8 +211,11 @@ class _RoomStat extends StatelessWidget {
   final String label;
   final int value;
   final Color color;
-  const _RoomStat(
-      {required this.label, required this.value, required this.color});
+  const _RoomStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -227,15 +225,9 @@ class _RoomStat extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Text(
-            '$value',
-            style: AppTextStyles.h3.copyWith(color: color),
-          ),
+          Text('$value', style: AppTextStyles.h3.copyWith(color: color)),
           const SizedBox(height: 2),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(color: subtext),
-          ),
+          Text(label, style: AppTextStyles.caption.copyWith(color: subtext)),
         ],
       ),
     );

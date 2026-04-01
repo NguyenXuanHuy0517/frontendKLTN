@@ -12,7 +12,9 @@ import '../../../providers/room_provider.dart';
 
 class RoomFormScreen extends StatefulWidget {
   final int? roomId;
-  const RoomFormScreen({super.key, this.roomId});
+  final int? initialAreaId;
+
+  const RoomFormScreen({super.key, this.roomId, this.initialAreaId});
 
   @override
   State<RoomFormScreen> createState() => _RoomFormScreenState();
@@ -35,21 +37,63 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedAreaId = widget.initialAreaId;
     _loadAreas();
     if (_isEdit) _prefill();
   }
 
   Future<void> _loadAreas() async {
-    final hostId = await context.read<AuthProvider>().getUserId();
+    final authProvider = context.read<AuthProvider>();
+    final areaProvider = context.read<AreaProvider>();
+    final hostId = await authProvider.getUserId();
     if (hostId != null && mounted) {
-      context.read<AreaProvider>().fetchAreas(hostId);
+      await areaProvider.fetchAreas(hostId);
+      final areaIds = areaProvider.areas.map((a) => a.areaId);
+      if (_selectedAreaId != null && !areaIds.contains(_selectedAreaId)) {
+        setState(() => _selectedAreaId = null);
+      }
+    }
+  }
+
+  Future<void> _openCreateAreaFlow() async {
+    final areaProvider = context.read<AreaProvider>();
+    final previousAreaIds = areaProvider.areas
+        .map((area) => area.areaId)
+        .toSet();
+
+    await context.push('/host/areas/new');
+    if (!mounted) return;
+
+    await _loadAreas();
+    if (!mounted) return;
+
+    final areas = areaProvider.areas;
+    final newAreas = areas
+        .where((area) => !previousAreaIds.contains(area.areaId))
+        .toList();
+
+    if (newAreas.length == 1) {
+      final createdArea = newAreas.first;
+      setState(() => _selectedAreaId = createdArea.areaId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Da them khu tro "${createdArea.areaName}" va tu dong chon cho phong nay.',
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
     }
   }
 
   void _prefill() {
     final rooms = context.read<RoomProvider>().rooms;
     final room = rooms.firstWhere(
-          (r) => r.roomId == widget.roomId,
+      (r) => r.roomId == widget.roomId,
       orElse: () => RoomModel(
         roomId: 0,
         roomCode: '',
@@ -86,9 +130,9 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedAreaId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn khu trọ')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Vui lòng chọn khu trọ')));
       return;
     }
     setState(() => _loading = true);
@@ -120,11 +164,13 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              _isEdit ? 'Cập nhật phòng thành công' : 'Tạo phòng thành công'),
+            _isEdit ? 'Cập nhật phòng thành công' : 'Tạo phòng thành công',
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       context.pop();
@@ -134,8 +180,9 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
           content: Text(provider.error ?? 'Thao tác thất bại'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -150,6 +197,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
     final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
     final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final areas = context.watch<AreaProvider>().areas;
+    final hasAreas = areas.isNotEmpty;
 
     return Scaffold(
       backgroundColor: bg,
@@ -189,18 +237,54 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
                     value: _selectedAreaId,
                     isExpanded: true,
                     dropdownColor: cardColor,
-                    hint: Text('Chọn khu trọ',
-                        style:
-                        AppTextStyles.body.copyWith(color: subtext)),
+                    hint: Text(
+                      'Chọn khu trọ',
+                      style: AppTextStyles.body.copyWith(color: subtext),
+                    ),
                     style: AppTextStyles.body.copyWith(color: fg),
                     items: areas
-                        .map((a) => DropdownMenuItem(
-                      value: a.areaId,
-                      child: Text(a.areaName),
-                    ))
+                        .map(
+                          (a) => DropdownMenuItem(
+                            value: a.areaId,
+                            child: Text(a.areaName),
+                          ),
+                        )
                         .toList(),
-                    onChanged: (v) =>
-                        setState(() => _selectedAreaId = v),
+                    onChanged: (v) => setState(() => _selectedAreaId = v),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (!hasAreas)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Ban can tao khu tro truoc khi tao phong.',
+                    style: AppTextStyles.bodySmall.copyWith(color: subtext),
+                  ),
+                ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: _openCreateAreaFlow,
+                  icon: const Icon(
+                    Icons.add_home_work_outlined,
+                    size: 18,
+                    color: AppColors.accent,
+                  ),
+                  label: Text(
+                    '+ Them khu tro moi',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 0,
+                      vertical: 4,
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
               ),

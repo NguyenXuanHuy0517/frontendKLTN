@@ -33,6 +33,13 @@ class AuthService {
     });
   }
 
+  Future<void> forgotPassword(String email) async {
+    await _dio.post(
+      ApiConstants.forgotPassword,
+      data: {'email': email},
+    );
+  }
+
   Future<void> _saveUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(StorageKeys.token, user.token);

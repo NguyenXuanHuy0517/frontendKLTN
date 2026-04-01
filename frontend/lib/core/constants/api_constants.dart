@@ -14,8 +14,9 @@ class ApiConstants {
   static String get baseTenantUrl => 'http://$_host:8083';
 
   // ── Auth ──────────────────────────────────────────────────
-  static const String login    = '/api/auth/login';
-  static const String register = '/api/auth/register';
+  static const String login           = '/api/auth/login';
+  static const String register        = '/api/auth/register';
+  static const String forgotPassword  = '/api/auth/forgot-password';
 
   // ── Host ──────────────────────────────────────────────────
   static const String areas     = '/api/host/areas';

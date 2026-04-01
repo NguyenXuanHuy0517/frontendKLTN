@@ -40,6 +40,12 @@ class ApiClient {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+
+        // Xóa Content-Type khi upload file để Dio tự set multipart
+        if (options.data is FormData) {
+          options.headers.remove('Content-Type');
+        }
+
         handler.next(options);
       },
       onError: (error, handler) {

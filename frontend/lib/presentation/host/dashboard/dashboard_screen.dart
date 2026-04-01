@@ -9,6 +9,7 @@ import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/gradient_text.dart';
 import '../../../core/widgets/section_badge.dart';
 import '../../../core/widgets/host_bottom_nav.dart';
+import '../../../core/widgets/profile_bottom_sheet.dart';
 import '../../../data/models/report_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/report_provider.dart';
@@ -112,6 +113,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         onPressed: () {},
                       ),
+                      // Profile
+                      IconButton(
+                        icon: Icon(
+                          Icons.person_outline_rounded,
+                          color: subtext,
+                          size: 22,
+                        ),
+                        onPressed: () => ProfileBottomSheet.show(context),
+                      ),
                     ],
                   ),
                 ),
@@ -126,8 +136,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       Text(
                         'Xin chào,',
-                        style:
-                        AppTextStyles.body.copyWith(color: subtext),
+                        style: AppTextStyles.body.copyWith(color: subtext),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -152,15 +161,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 )
               else if (report.report == null)
-                  const SliverFillRemaining(
-                    child: AppEmpty(message: 'Không có dữ liệu'),
-                  )
-                else ...[
-                    SliverToBoxAdapter(
-                      child: _buildBody(
-                          context, report.report!, isDark, fg, subtext),
-                    ),
-                  ],
+                const SliverFillRemaining(
+                  child: AppEmpty(message: 'Không có dữ liệu'),
+                )
+              else ...[
+                SliverToBoxAdapter(
+                  child: _buildBody(
+                    context,
+                    report.report!,
+                    isDark,
+                    fg,
+                    subtext,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -171,8 +185,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildBody(BuildContext context, ReportModel r, bool isDark,
-      Color fg, Color subtext) {
+  Widget _buildBody(
+    BuildContext context,
+    ReportModel r,
+    bool isDark,
+    Color fg,
+    Color subtext,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -186,10 +205,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
 
           // ── Room stats ───────────────────────────────────
-          Text(
-            'Tình trạng phòng',
-            style: AppTextStyles.h3.copyWith(color: fg),
-          ),
+          Text('Tình trạng phòng', style: AppTextStyles.h3.copyWith(color: fg)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -242,10 +258,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
 
           // ── Alert cards ───────────────────────────────────
-          Text(
-            'Cần xử lý',
-            style: AppTextStyles.h3.copyWith(color: fg),
-          ),
+          Text('Cần xử lý', style: AppTextStyles.h3.copyWith(color: fg)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -281,11 +294,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
 
           // ── Quick actions ─────────────────────────────────
+          Text('Truy cập nhanh', style: AppTextStyles.h3.copyWith(color: fg)),
+          const SizedBox(height: 12),
           Text(
-            'Truy cập nhanh',
-            style: AppTextStyles.h3.copyWith(color: fg),
+            'Tao nhanh',
+            style: AppTextStyles.body.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 12),
+          const _CreateQuickActions(),
+          const SizedBox(height: 20),
           _QuickActions(),
 
           const SizedBox(height: 32),
@@ -329,13 +349,15 @@ class _RevenueCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.account_balance_wallet_outlined,
-                  color: Colors.white70, size: 18),
+              const Icon(
+                Icons.account_balance_wallet_outlined,
+                color: Colors.white70,
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Doanh thu tháng này',
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: Colors.white70),
+                style: AppTextStyles.bodySmall.copyWith(color: Colors.white70),
               ),
               const Spacer(),
               SectionBadge(
@@ -347,16 +369,12 @@ class _RevenueCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             CurrencyUtils.format(report.totalRevenue),
-            style: AppTextStyles.h1.copyWith(
-              color: Colors.white,
-              fontSize: 28,
-            ),
+            style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 28),
           ),
           const SizedBox(height: 8),
           Text(
             'Tháng trước: ${CurrencyUtils.format(report.previousRevenue)}',
-            style:
-            AppTextStyles.bodySmall.copyWith(color: Colors.white60),
+            style: AppTextStyles.bodySmall.copyWith(color: Colors.white60),
           ),
         ],
       ),
@@ -382,8 +400,7 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtext =
-    isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
 
     return AppCard(
@@ -401,15 +418,9 @@ class _StatCard extends StatelessWidget {
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(height: 12),
-          Text(
-            value,
-            style: AppTextStyles.h2.copyWith(color: fg),
-          ),
+          Text(value, style: AppTextStyles.h2.copyWith(color: fg)),
           const SizedBox(height: 2),
-          Text(
-            label,
-            style: AppTextStyles.bodySmall.copyWith(color: subtext),
-          ),
+          Text(label, style: AppTextStyles.bodySmall.copyWith(color: subtext)),
         ],
       ),
     );
@@ -436,8 +447,7 @@ class _AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtext =
-    isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
 
     return AppCard(
@@ -460,25 +470,17 @@ class _AlertCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '$count',
-                  style: AppTextStyles.h3.copyWith(color: fg),
-                ),
+                Text('$count', style: AppTextStyles.h3.copyWith(color: fg)),
                 Text(
                   label,
-                  style: AppTextStyles.caption
-                      .copyWith(color: subtext),
+                  style: AppTextStyles.caption.copyWith(color: subtext),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          Icon(
-            Icons.arrow_forward_ios_rounded,
-            size: 14,
-            color: subtext,
-          ),
+          Icon(Icons.arrow_forward_ios_rounded, size: 14, color: subtext),
         ],
       ),
     );
@@ -495,10 +497,8 @@ class _OccupancyBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
-    final subtext =
-    isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-    final border =
-    isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return AppCard(
       padding: const EdgeInsets.all(16),
@@ -510,14 +510,14 @@ class _OccupancyBar extends StatelessWidget {
               Text(
                 'Tỷ lệ lấp đầy',
                 style: AppTextStyles.body.copyWith(
-                    color: fg, fontWeight: FontWeight.w600),
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const Spacer(),
               Text(
                 '${rate.toStringAsFixed(1)}%',
-                style: AppTextStyles.h3.copyWith(
-                  color: AppColors.accent,
-                ),
+                style: AppTextStyles.h3.copyWith(color: AppColors.accent),
               ),
             ],
           ),
@@ -562,8 +562,6 @@ class _QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final subtext =
-    isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
 
     return GridView.builder(
@@ -588,14 +586,10 @@ class _QuickActions extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.1),
+                  color: AppColors.accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  action.icon,
-                  color: AppColors.accent,
-                  size: 22,
-                ),
+                child: Icon(action.icon, color: AppColors.accent, size: 22),
               ),
               const SizedBox(height: 8),
               Text(
@@ -608,6 +602,86 @@ class _QuickActions extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _CreateQuickActions extends StatelessWidget {
+  const _CreateQuickActions();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: const [
+        Expanded(
+          child: _CreateActionCard(
+            icon: Icons.location_city_outlined,
+            title: 'Tao khu tro moi',
+            subtitle: 'Khoi tao khu truoc khi them phong',
+            route: '/host/areas/new',
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: _CreateActionCard(
+            icon: Icons.note_add_outlined,
+            title: 'Tao hop dong moi',
+            subtitle: 'Gan phong va nguoi thue nhanh hon',
+            route: '/host/contracts/new',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CreateActionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String route;
+
+  const _CreateActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+
+    return AppCard(
+      onTap: () => context.push(route),
+      featured: true,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.accent, size: 22),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: AppTextStyles.body.copyWith(
+              color: fg,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(subtitle, style: AppTextStyles.caption.copyWith(color: subtext)),
+        ],
+      ),
     );
   }
 }
@@ -628,8 +702,7 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final border =
-    isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Container(
       decoration: BoxDecoration(
@@ -642,8 +715,9 @@ class _BottomNav extends StatelessWidget {
         elevation: 0,
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.accent,
-        unselectedItemColor:
-        isDark ? AppColors.darkSubtext : AppColors.lightSubtext,
+        unselectedItemColor: isDark
+            ? AppColors.darkSubtext
+            : AppColors.lightSubtext,
         selectedLabelStyle: AppTextStyles.caption,
         unselectedLabelStyle: AppTextStyles.caption,
         onTap: (i) {

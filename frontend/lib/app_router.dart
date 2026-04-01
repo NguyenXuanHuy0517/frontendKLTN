@@ -56,48 +56,43 @@ class AppRouter {
     },
     routes: [
       // ── Auth ──────────────────────────────────────────────
-      GoRoute(
-        path: '/login',
-        builder: (_, __) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/register',
-        builder: (_, __) => const RegisterScreen(),
-      ),
+      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
 
       // ──────────────────────────────────────────────────────
       // HOST ROUTES
       // ──────────────────────────────────────────────────────
-
       GoRoute(
         path: '/host/dashboard',
         builder: (_, __) => const DashboardScreen(),
       ),
 
       // Areas
-      GoRoute(
-        path: '/host/areas',
-        builder: (_, __) => const AreaListScreen(),
-      ),
+      GoRoute(path: '/host/areas', builder: (_, __) => const AreaListScreen()),
       GoRoute(
         path: '/host/areas/new',
         builder: (_, __) => const AreaFormScreen(),
       ),
       GoRoute(
         path: '/host/areas/:areaId/edit',
-        builder: (_, state) => AreaFormScreen(
-          areaId: int.parse(state.pathParameters['areaId']!),
-        ),
+        builder: (_, state) =>
+            AreaFormScreen(areaId: int.parse(state.pathParameters['areaId']!)),
       ),
 
       // Rooms
       GoRoute(
         path: '/host/rooms',
-        builder: (_, __) => const RoomListScreen(),
+        builder: (_, state) => RoomListScreen(
+          areaId: int.tryParse(state.uri.queryParameters['areaId'] ?? ''),
+        ),
       ),
       GoRoute(
         path: '/host/rooms/new',
-        builder: (_, __) => const RoomFormScreen(),
+        builder: (_, state) => RoomFormScreen(
+          initialAreaId: int.tryParse(
+            state.uri.queryParameters['areaId'] ?? '',
+          ),
+        ),
       ),
       GoRoute(
         path: '/host/rooms/:roomId',
@@ -107,9 +102,8 @@ class AppRouter {
       ),
       GoRoute(
         path: '/host/rooms/:roomId/edit',
-        builder: (_, state) => RoomFormScreen(
-          roomId: int.parse(state.pathParameters['roomId']!),
-        ),
+        builder: (_, state) =>
+            RoomFormScreen(roomId: int.parse(state.pathParameters['roomId']!)),
       ),
 
       // Tenants
@@ -177,7 +171,6 @@ class AppRouter {
       // ──────────────────────────────────────────────────────
       // TENANT ROUTES
       // ──────────────────────────────────────────────────────
-
       GoRoute(
         path: '/tenant/dashboard',
         builder: (_, __) => const TenantDashboardScreen(),

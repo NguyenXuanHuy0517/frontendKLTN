@@ -16,6 +16,7 @@ class HostBottomNav extends StatelessWidget {
     '/host/services',
     '/host/invoices',
     '/host/issues',
+    '/host/profile',
   ];
 
   @override
@@ -67,6 +68,11 @@ class HostBottomNav extends StatelessWidget {
             icon: Icon(Icons.report_outlined),
             activeIcon: Icon(Icons.report_rounded),
             label: 'Khiếu nại',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outlined),
+            activeIcon: Icon(Icons.person_rounded),
+            label: 'Hồ sơ',
           ),
         ],
       ),

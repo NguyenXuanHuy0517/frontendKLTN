@@ -113,7 +113,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 32),
 
                 Text(
-                  'Vai trÃ² tÃ i khoáº£n',
+                  'Vai trò tài khoản',
                   style: AppTextStyles.label.copyWith(color: subtext),
                 ),
                 const SizedBox(height: 10),

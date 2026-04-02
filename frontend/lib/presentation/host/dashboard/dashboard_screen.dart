@@ -236,12 +236,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 28),
-          const Align(
-            alignment: Alignment.centerRight,
-            child: DashboardClockCard(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 8, child: _RevenueCard(report: report)),
+              const SizedBox(width: 12),
+              const Expanded(
+                flex: 5,
+                child: DashboardClockCard(compact: true),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          _RevenueCard(report: report),
           const SizedBox(height: 20),
           Text('Tình trạng phòng', style: AppTextStyles.h3.copyWith(color: fg)),
           const SizedBox(height: 12),

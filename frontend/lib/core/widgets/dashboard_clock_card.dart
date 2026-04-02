@@ -6,7 +6,9 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
 class DashboardClockCard extends StatefulWidget {
-  const DashboardClockCard({super.key});
+  final bool compact;
+
+  const DashboardClockCard({super.key, this.compact = false});
 
   @override
   State<DashboardClockCard> createState() => _DashboardClockCardState();
@@ -63,10 +65,18 @@ class _DashboardClockCardState extends State<DashboardClockCard> {
     final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final title = widget.compact ? 'Thoi gian' : 'Thoi gian hien tai';
+    final padding = widget.compact
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+        : const EdgeInsets.symmetric(horizontal: 16, vertical: 12);
+    final iconSize = widget.compact ? 14.0 : 16.0;
+    final timeStyle = widget.compact ? AppTextStyles.h3 : AppTextStyles.h2;
+    final timeSpacing = widget.compact ? 6.0 : 8.0;
+    final dateSpacing = widget.compact ? 1.0 : 2.0;
 
     return Container(
-      constraints: const BoxConstraints(minWidth: 210),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      constraints: BoxConstraints(minWidth: widget.compact ? 0 : 210),
+      padding: padding,
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -79,10 +89,14 @@ class _DashboardClockCardState extends State<DashboardClockCard> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.schedule_rounded, color: AppColors.accent, size: 16),
+              Icon(
+                Icons.schedule_rounded,
+                color: AppColors.accent,
+                size: iconSize,
+              ),
               const SizedBox(width: 6),
               Text(
-                'Thoi gian hien tai',
+                title,
                 style: AppTextStyles.caption.copyWith(
                   color: subtext,
                   fontWeight: FontWeight.w600,
@@ -90,12 +104,12 @@ class _DashboardClockCardState extends State<DashboardClockCard> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: timeSpacing),
           Text(
             _timeLabel,
-            style: AppTextStyles.h2.copyWith(color: fg),
+            style: timeStyle.copyWith(color: fg),
           ),
-          const SizedBox(height: 2),
+          SizedBox(height: dateSpacing),
           Text(
             _dateLabel,
             style: AppTextStyles.caption.copyWith(color: subtext),

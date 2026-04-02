@@ -228,12 +228,23 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      const Align(
-                        alignment: Alignment.centerRight,
-                        child: DashboardClockCard(),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 8,
+                            child: _CurrentRoomCard(
+                              contract: currentContract,
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            flex: 5,
+                            child: DashboardClockCard(compact: true),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      _CurrentRoomCard(contract: currentContract, isDark: isDark),
                       const SizedBox(height: 16),
                       Row(
                         children: [

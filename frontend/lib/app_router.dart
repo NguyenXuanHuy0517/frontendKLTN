@@ -30,7 +30,6 @@ import 'presentation/host/issue/issue_detail_screen.dart';
 import 'presentation/host/notification/host_notification_screen.dart';
 import 'presentation/host/notification/host_notification_send_screen.dart';
 import 'presentation/host/service/host_service_management_screen.dart';
-import 'presentation/host/profile/host_profile_screen.dart';
 import 'presentation/tenant/dashboard/tenant_dashboard_screen.dart';
 import 'presentation/tenant/invoice/tenant_invoice_list_screen.dart';
 import 'presentation/tenant/invoice/tenant_invoice_detail_screen.dart';
@@ -234,11 +233,6 @@ class AppRouter {
         path: '/host/notifications/send',
         builder: (context, state) => const HostNotificationSendScreen(),
       ),
-      GoRoute(
-        path: '/host/profile',
-        builder: (context, state) => const HostProfileScreen(),
-      ),
-
       GoRoute(
         path: '/tenant/dashboard',
         builder: (context, state) => const TenantDashboardScreen(),

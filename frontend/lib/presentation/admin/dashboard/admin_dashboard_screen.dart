@@ -42,7 +42,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final dashboard = dashboardProvider.dashboard;
     final revenue = revenueProvider.revenue;
     final loading =
-        dashboardProvider.loading || (revenueProvider.loading && revenue == null);
+        dashboardProvider.loading ||
+        (revenueProvider.loading && revenue == null);
     final error = dashboardProvider.error ?? revenueProvider.error;
 
     return AdminShell(
@@ -59,37 +60,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: loading && dashboard == null
           ? const AppLoading()
           : error != null && dashboard == null
-              ? AppEmpty(
-                  message: error,
-                  icon: Icons.wifi_off_rounded,
-                  actionLabel: 'Thu lai',
-                  onAction: _load,
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  color: AppColors.accent,
-                  child: ListView(
-                    padding: const EdgeInsets.all(24),
-                    children: [
-                      if (dashboard != null) ...[
-                        _DashboardStatGrid(dashboard: dashboard),
-                        const SizedBox(height: 20),
-                        _QuickActionRow(
-                          onHosts: () => context.go('/admin/hosts'),
-                          onRooms: () => context.go('/admin/rooms'),
-                          onRevenue: () => context.go('/admin/revenue'),
-                        ),
-                        const SizedBox(height: 20),
-                        _AlertPanel(alerts: dashboard.alerts),
-                        const SizedBox(height: 20),
-                      ],
-                      if (revenue != null)
-                        _RevenueTrendPanel(
-                          entries: revenue.revenueByPeriod.entries.toList(),
-                        ),
-                    ],
-                  ),
-                ),
+          ? AppEmpty(
+              message: error,
+              icon: Icons.wifi_off_rounded,
+              actionLabel: 'Thu lai',
+              onAction: _load,
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.accent,
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  if (dashboard != null) ...[
+                    _DashboardStatGrid(dashboard: dashboard),
+                    const SizedBox(height: 20),
+                    _QuickActionRow(
+                      onHosts: () => context.go('/admin/hosts'),
+                      onRooms: () => context.go('/admin/rooms'),
+                      onRevenue: () => context.go('/admin/revenue'),
+                    ),
+                    const SizedBox(height: 20),
+                    _AlertPanel(alerts: dashboard.alerts),
+                    const SizedBox(height: 20),
+                  ],
+                  if (revenue != null)
+                    _RevenueTrendPanel(
+                      entries: revenue.revenueByPeriod.entries.toList(),
+                    ),
+                ],
+              ),
+            ),
     );
   }
 }
@@ -102,27 +103,76 @@ class _DashboardStatGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cards = [
-      _StatCardData('Tong users', '${dashboard.totalUsers}', Icons.groups_2_outlined, AppColors.accent),
-      _StatCardData('Hosts', '${dashboard.totalHosts}', Icons.apartment_outlined, AppColors.info),
-      _StatCardData('Tenants', '${dashboard.totalTenants}', Icons.badge_outlined, AppColors.success),
-      _StatCardData('Tong rooms', '${dashboard.totalRooms}', Icons.meeting_room_outlined, AppColors.accent),
-      _StatCardData('Ty le lap day', '${dashboard.occupancyRate.toStringAsFixed(0)}%', Icons.pie_chart_outline_rounded, AppColors.info),
-      _StatCardData('Hop dong active', '${dashboard.activeContracts}', Icons.description_outlined, AppColors.success),
-      _StatCardData('Hoa don qua han', '${dashboard.overdueInvoices}', Icons.warning_amber_rounded, AppColors.error),
-      _StatCardData('Doanh thu thang nay', CurrencyUtils.formatCompact(dashboard.thisMonthRevenue), Icons.savings_outlined, AppColors.success),
+      _StatCardData(
+        'Tong users',
+        '${dashboard.totalUsers}',
+        Icons.groups_2_outlined,
+        AppColors.accent,
+      ),
+      _StatCardData(
+        'Hosts',
+        '${dashboard.totalHosts}',
+        Icons.apartment_outlined,
+        AppColors.info,
+      ),
+      _StatCardData(
+        'Tenants',
+        '${dashboard.totalTenants}',
+        Icons.badge_outlined,
+        AppColors.success,
+      ),
+      _StatCardData(
+        'Tong rooms',
+        '${dashboard.totalRooms}',
+        Icons.meeting_room_outlined,
+        AppColors.accent,
+      ),
+      _StatCardData(
+        'Tỷ lệ lấp đầy',
+        '${dashboard.occupancyRate.toStringAsFixed(0)}%',
+        Icons.pie_chart_outline_rounded,
+        AppColors.info,
+      ),
+      _StatCardData(
+        'Hợp đồng đang hoạt động',
+        '${dashboard.activeContracts}',
+        Icons.description_outlined,
+        AppColors.success,
+      ),
+      _StatCardData(
+        'Hóa đơn quá hạn',
+        '${dashboard.overdueInvoices}',
+        Icons.warning_amber_rounded,
+        AppColors.error,
+      ),
+      _StatCardData(
+        'Doanh thu tháng này',
+        CurrencyUtils.formatCompact(dashboard.thisMonthRevenue),
+        Icons.savings_outlined,
+        AppColors.success,
+      ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final columns = width >= 1200 ? 4 : width >= 760 ? 2 : 1;
+        final columns = width >= 1200
+            ? 4
+            : width >= 760
+            ? 2
+            : 1;
         final itemWidth = (width - (columns - 1) * 16) / columns;
 
         return Wrap(
           spacing: 16,
           runSpacing: 16,
           children: cards
-              .map((card) => SizedBox(width: itemWidth, child: _StatCard(card: card)))
+              .map(
+                (card) => SizedBox(
+                  width: itemWidth,
+                  child: _StatCard(card: card),
+                ),
+              )
               .toList(),
         );
       },
@@ -244,7 +294,8 @@ class _QuickActionRow extends StatelessWidget {
                               Text(
                                 action.description,
                                 style: AppTextStyles.body2.copyWith(
-                                  color: Theme.of(context).brightness ==
+                                  color:
+                                      Theme.of(context).brightness ==
                                           Brightness.dark
                                       ? AppColors.darkSubtext
                                       : AppColors.lightSubtext,
@@ -330,7 +381,9 @@ class _AlertPanel extends StatelessWidget {
                   color: _severityColor(alert.severity).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: _severityColor(alert.severity).withValues(alpha: 0.22),
+                    color: _severityColor(
+                      alert.severity,
+                    ).withValues(alpha: 0.22),
                   ),
                 ),
                 child: Row(
@@ -350,7 +403,9 @@ class _AlertPanel extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               alert.description,
-                              style: AppTextStyles.body2.copyWith(color: subtext),
+                              style: AppTextStyles.body2.copyWith(
+                                color: subtext,
+                              ),
                             ),
                           ],
                         ],
@@ -404,40 +459,43 @@ class _RevenueTrendPanel extends StatelessWidget {
               style: AppTextStyles.body.copyWith(color: subtext),
             )
           else
-            ...entries.take(6).map(
-              (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 94,
-                      child: Text(entry.key, style: AppTextStyles.caption),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: LinearProgressIndicator(
-                          value: maxValue == 0 ? 0 : entry.value / maxValue,
-                          minHeight: 10,
-                          backgroundColor:
-                              AppColors.accent.withValues(alpha: 0.12),
-                          color: AppColors.accent,
+            ...entries
+                .take(6)
+                .map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 94,
+                          child: Text(entry.key, style: AppTextStyles.caption),
                         ),
-                      ),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: maxValue == 0 ? 0 : entry.value / maxValue,
+                              minHeight: 10,
+                              backgroundColor: AppColors.accent.withValues(
+                                alpha: 0.12,
+                              ),
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 96,
+                          child: Text(
+                            CurrencyUtils.formatCompact(entry.value),
+                            textAlign: TextAlign.right,
+                            style: AppTextStyles.bodySmall.copyWith(color: fg),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    SizedBox(
-                      width: 96,
-                      child: Text(
-                        CurrencyUtils.formatCompact(entry.value),
-                        textAlign: TextAlign.right,
-                        style: AppTextStyles.bodySmall.copyWith(color: fg),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
         ],
       ),
     );

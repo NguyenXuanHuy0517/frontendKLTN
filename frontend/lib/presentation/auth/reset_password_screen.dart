@@ -51,7 +51,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       context.go('/login');
@@ -122,27 +124,27 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Tao mat khau moi',
+                        'Tạo mật khẩu mới',
                         style: AppTextStyles.h1.copyWith(color: fg),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Nhap mat khau moi de hoan tat qua trinh khoi phuc tai khoan.',
+                        'Nhập mật khẩu mới để hoàn tất quá trình khôi phục tài khoản.',
                         style: AppTextStyles.body.copyWith(color: subtext),
                       ),
                       const SizedBox(height: 32),
                       AppTextField(
-                        label: 'Mat khau moi',
+                        label: 'Mật khẩu mới',
                         hint: '••••••••',
                         controller: _passwordCtrl,
                         obscure: true,
                         prefixIcon: Icons.lock_outline_rounded,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Vui long nhap mat khau moi';
+                            return 'Vui lòng nhập mật khẩu mới';
                           }
                           if (value.length < 6) {
-                            return 'Mat khau toi thieu 6 ky tu';
+                            return 'Mật khẩu tối thiểu 6 ký tự';
                           }
                           return null;
                         },

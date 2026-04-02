@@ -1,15 +1,14 @@
-// Bottom sheet hiển thị thông tin tài khoản và các thao tác cá nhân cơ bản.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../../providers/auth_provider.dart';
+import '../../providers/notification_badge_provider.dart';
+import '../session/session_store.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import 'app_button.dart';
 import 'confirm_dialog.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/notification_badge_provider.dart';
-import '../../core/constants/storage_keys.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileBottomSheet extends StatefulWidget {
   const ProfileBottomSheet({super.key});
@@ -30,23 +29,17 @@ class ProfileBottomSheet extends StatefulWidget {
 }
 
 class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
-  String? _fullName;
-  String? _email;
-  String? _role;
+  late String? _fullName;
+  late String? _email;
+  late String? _role;
 
   @override
   void initState() {
     super.initState();
-    _loadUserInfo();
-  }
-
-  Future<void> _loadUserInfo() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _fullName = prefs.getString(StorageKeys.fullName);
-      _email = prefs.getString(StorageKeys.email);
-      _role = prefs.getString(StorageKeys.role);
-    });
+    final user = context.read<AuthProvider>().user;
+    _fullName = user?.fullName ?? SessionStore.instance.fullName;
+    _email = user?.email ?? SessionStore.instance.email;
+    _role = user?.role ?? SessionStore.instance.role;
   }
 
   String _getRoleLabel(String? role) {
@@ -66,14 +59,11 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
       destructive: true,
     );
 
+    if (!mounted || confirmed != true) return;
+    context.read<NotificationBadgeProvider>().reset();
+    await context.read<AuthProvider>().logout();
     if (!mounted) return;
-
-    if (confirmed == true) {
-      context.read<NotificationBadgeProvider>().reset();
-      await context.read<AuthProvider>().logout();
-      if (!mounted) return;
-      context.go('/login');
-    }
+    context.go('/login');
   }
 
   void _showFeatureMessage(String message) {
@@ -121,7 +111,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                 ],
               ),
               const SizedBox(height: 24),
-
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -156,7 +145,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
                     Text(
                       'Họ và tên',
                       style: AppTextStyles.caption.copyWith(color: subtext),
@@ -167,7 +155,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                       style: AppTextStyles.body.copyWith(color: fg),
                     ),
                     const SizedBox(height: 16),
-
                     Text(
                       'Email',
                       style: AppTextStyles.caption.copyWith(color: subtext),
@@ -178,7 +165,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                       style: AppTextStyles.body.copyWith(color: fg),
                     ),
                     const SizedBox(height: 16),
-
                     Text(
                       'Vai trò',
                       style: AppTextStyles.caption.copyWith(color: subtext),
@@ -205,14 +191,12 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                 ),
               ),
               const SizedBox(height: 24),
-
               _buildMenuItem(
                 icon: Icons.person_outline_rounded,
                 title: 'Chỉnh sửa hồ sơ',
                 onTap: () => _showFeatureMessage(
                   'Tính năng chỉnh sửa hồ sơ sẽ sớm được bổ sung.',
                 ),
-                isDark: isDark,
                 fg: fg,
                 subtext: subtext,
               ),
@@ -222,7 +206,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                 onTap: () => _showFeatureMessage(
                   'Tính năng đổi mật khẩu sẽ sớm được bổ sung.',
                 ),
-                isDark: isDark,
                 fg: fg,
                 subtext: subtext,
               ),
@@ -232,12 +215,10 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
                 onTap: () => _showFeatureMessage(
                   'Kênh trợ giúp và hỗ trợ sẽ sớm được cập nhật.',
                 ),
-                isDark: isDark,
                 fg: fg,
                 subtext: subtext,
               ),
               const SizedBox(height: 24),
-
               AppButton(
                 label: 'Đăng xuất',
                 onPressed: _handleLogout,
@@ -255,7 +236,6 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
-    required bool isDark,
     required Color fg,
     required Color subtext,
   }) {
@@ -267,7 +247,7 @@ class _ProfileBottomSheetState extends State<ProfileBottomSheet> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(
               children: [
                 Icon(icon, color: subtext, size: 20),

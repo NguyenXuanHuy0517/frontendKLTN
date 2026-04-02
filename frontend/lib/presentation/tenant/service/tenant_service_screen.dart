@@ -120,55 +120,15 @@ class _TenantServiceScreenState extends State<TenantServiceScreen> {
     required String title,
     required String submitLabel,
     int initialQuantity = 1,
-  }) async {
-    final quantityCtrl = TextEditingController(text: '$initialQuantity');
-    final formKey = GlobalKey<FormState>();
-
-    final confirmed = await showDialog<bool>(
+  }) {
+    return showDialog<int>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(title),
-          content: Form(
-            key: formKey,
-            child: TextFormField(
-              controller: quantityCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Số lượng',
-                hintText: '1',
-              ),
-              validator: (value) {
-                final parsed = int.tryParse((value ?? '').trim());
-                if (parsed == null || parsed <= 0) {
-                  return 'Nhập số lượng hợp lệ';
-                }
-                return null;
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (!(formKey.currentState?.validate() ?? false)) return;
-                Navigator.pop(dialogContext, true);
-              },
-              child: Text(submitLabel),
-            ),
-          ],
-        );
-      },
+      builder: (_) => _QuantityDialog(
+        title: title,
+        submitLabel: submitLabel,
+        initialQuantity: initialQuantity,
+      ),
     );
-
-    final quantity = int.tryParse(quantityCtrl.text.trim());
-    quantityCtrl.dispose();
-
-    if (confirmed != true || quantity == null || quantity <= 0) return null;
-    return quantity;
   }
 
   Future<void> _rentService(ServiceModel service) async {
@@ -286,192 +246,255 @@ class _TenantServiceScreenState extends State<TenantServiceScreen> {
       body: _loading
           ? const AppLoading()
           : _error != null
-              ? RefreshIndicator(
-                  color: AppColors.accent,
-                  onRefresh: _load,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(24),
-                    children: [
-                      AppEmpty(
-                        message: _error!,
-                        icon: Icons.miscellaneous_services_outlined,
-                        actionLabel: 'Thử lại',
-                        onAction: _load,
-                      ),
-                    ],
+          ? RefreshIndicator(
+              color: AppColors.accent,
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                children: [
+                  AppEmpty(
+                    message: _error!,
+                    icon: Icons.miscellaneous_services_outlined,
+                    actionLabel: 'Thử lại',
+                    onAction: _load,
                   ),
-                )
-              : contract == null
-                  ? RefreshIndicator(
-                      color: AppColors.accent,
-                      onRefresh: _load,
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(24),
-                        children: const [
-                          AppEmpty(
-                            message:
-                                'Chưa có hợp đồng đang hiệu lực để quản lý dịch vụ.',
-                            icon: Icons.miscellaneous_services_outlined,
-                          ),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      color: AppColors.accent,
-                      onRefresh: _load,
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(24),
-                        children: [
-                          AppCard(
-                            featured: _contractServices.isNotEmpty,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Phòng ${contract.roomCode}',
-                                            style: AppTextStyles.h3.copyWith(
-                                              color: fg,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            contract.areaName,
-                                            style:
-                                                AppTextStyles.bodySmall.copyWith(
-                                              color: subtext,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                ],
+              ),
+            )
+          : contract == null
+          ? RefreshIndicator(
+              color: AppColors.accent,
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                children: const [
+                  AppEmpty(
+                    message:
+                        'Chưa có hợp đồng đang hiệu lực để quản lý dịch vụ.',
+                    icon: Icons.miscellaneous_services_outlined,
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
+              color: AppColors.accent,
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(24),
+                children: [
+                  AppCard(
+                    featured: _contractServices.isNotEmpty,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Phòng ${contract.roomCode}',
+                                    style: AppTextStyles.h3.copyWith(color: fg),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    contract.areaName,
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: subtext,
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.accent
-                                            .withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        'Hóa đơn hàng tháng',
-                                        style: AppTextStyles.caption.copyWith(
-                                          color: AppColors.accent,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: [
-                                    _TenantStatPill(
-                                      icon:
-                                          Icons.miscellaneous_services_outlined,
-                                      color: AppColors.accent,
-                                      label:
-                                          '${_contractServices.length} đang sử dụng',
-                                    ),
-                                    _TenantStatPill(
-                                      icon: Icons.add_box_outlined,
-                                      color: AppColors.info,
-                                      label:
-                                          '${availableServices.length} có thể đăng ký',
-                                    ),
-                                    _TenantStatPill(
-                                      icon: Icons.home_work_outlined,
-                                      color: AppColors.success,
-                                      label: 'Theo khu trọ đang thuê',
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Dịch vụ đang sử dụng',
-                            style: AppTextStyles.h3.copyWith(color: fg),
-                          ),
-                          const SizedBox(height: 12),
-                          if (_contractServices.isEmpty)
-                            AppEmpty(
-                              message: availableServices.isEmpty
-                                  ? 'Khu trọ hiện tại chưa có dịch vụ nào để đăng ký.'
-                                  : 'Bạn chưa đăng ký dịch vụ nào. Có thể chọn thêm ở phần bên dưới.',
-                              icon: Icons.layers_clear_outlined,
-                            )
-                          else
-                            ..._contractServices.map(
-                              (service) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _TenantServiceCard(
-                                  service: service,
-                                  busy: _busyServiceIds
-                                      .contains(service.serviceId),
-                                  primaryLabel: 'Ngừng thuê',
-                                  primaryColor: AppColors.error,
-                                  onPrimary: () => _removeService(service),
-                                  secondaryLabel: 'Sửa số lượng',
-                                  onSecondary: () => _updateQuantity(service),
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Có thể đăng ký thêm',
-                            style: AppTextStyles.h3.copyWith(color: fg),
-                          ),
-                          const SizedBox(height: 12),
-                          if (availableServices.isEmpty)
-                            AppCard(
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.accent.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
                               child: Text(
-                                'Hiện không còn dịch vụ nào khác trong khu trọ để đăng ký thêm.',
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: subtext,
-                                ),
-                              ),
-                            )
-                          else
-                            ...availableServices.map(
-                              (service) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _TenantServiceCard(
-                                  service: service,
-                                  busy: _busyServiceIds
-                                      .contains(service.serviceId),
-                                  primaryLabel: 'Thuê dịch vụ',
-                                  primaryColor: AppColors.accent,
-                                  onPrimary: () => _rentService(service),
+                                'Hóa đơn hàng tháng',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.accent,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Các dịch vụ được áp dụng theo hợp đồng đang thuê và sẽ được tính vào hóa đơn theo cấu hình của chủ trọ.',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: subtext,
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            _TenantStatPill(
+                              icon: Icons.miscellaneous_services_outlined,
+                              color: AppColors.accent,
+                              label: '${_contractServices.length} đang sử dụng',
                             ),
-                          ),
-                        ],
+                            _TenantStatPill(
+                              icon: Icons.add_box_outlined,
+                              color: AppColors.info,
+                              label:
+                                  '${availableServices.length} có thể đăng ký',
+                            ),
+                            const _TenantStatPill(
+                              icon: Icons.home_work_outlined,
+                              color: AppColors.success,
+                              label: 'Theo khu trọ đang thuê',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Dịch vụ đang sử dụng',
+                    style: AppTextStyles.h3.copyWith(color: fg),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_contractServices.isEmpty)
+                    AppEmpty(
+                      message: availableServices.isEmpty
+                          ? 'Khu trọ hiện tại chưa có dịch vụ nào để đăng ký.'
+                          : 'Bạn chưa đăng ký dịch vụ nào. Có thể chọn thêm ở phần bên dưới.',
+                      icon: Icons.layers_clear_outlined,
+                    )
+                  else
+                    ..._contractServices.map(
+                      (service) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _TenantServiceCard(
+                          service: service,
+                          busy: _busyServiceIds.contains(service.serviceId),
+                          primaryLabel: 'Ngừng thuê',
+                          primaryColor: AppColors.error,
+                          onPrimary: () => _removeService(service),
+                          secondaryLabel: 'Sửa số lượng',
+                          onSecondary: () => _updateQuantity(service),
+                        ),
                       ),
                     ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Có thể đăng ký thêm',
+                    style: AppTextStyles.h3.copyWith(color: fg),
+                  ),
+                  const SizedBox(height: 12),
+                  if (availableServices.isEmpty)
+                    AppCard(
+                      child: Text(
+                        'Hiện không còn dịch vụ nào khác trong khu trọ để đăng ký thêm.',
+                        style: AppTextStyles.bodySmall.copyWith(color: subtext),
+                      ),
+                    )
+                  else
+                    ...availableServices.map(
+                      (service) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _TenantServiceCard(
+                          service: service,
+                          busy: _busyServiceIds.contains(service.serviceId),
+                          primaryLabel: 'Thuê dịch vụ',
+                          primaryColor: AppColors.accent,
+                          onPrimary: () => _rentService(service),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Các dịch vụ được áp dụng theo hợp đồng đang thuê và sẽ được tính vào hóa đơn theo cấu hình của chủ trọ.',
+                    style: AppTextStyles.bodySmall.copyWith(color: subtext),
+                  ),
+                ],
+              ),
+            ),
       bottomNavigationBar: const TenantBottomNav(currentIndex: 3),
+    );
+  }
+}
+
+class _QuantityDialog extends StatefulWidget {
+  final String title;
+  final String submitLabel;
+  final int initialQuantity;
+
+  const _QuantityDialog({
+    required this.title,
+    required this.submitLabel,
+    required this.initialQuantity,
+  });
+
+  @override
+  State<_QuantityDialog> createState() => _QuantityDialogState();
+}
+
+class _QuantityDialogState extends State<_QuantityDialog> {
+  late final TextEditingController _quantityCtrl;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _quantityCtrl = TextEditingController(text: '${widget.initialQuantity}');
+  }
+
+  @override
+  void dispose() {
+    _quantityCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final quantity = int.tryParse(_quantityCtrl.text.trim());
+    if (quantity == null || quantity <= 0) return;
+    Navigator.of(context).pop(quantity);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _quantityCtrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Số lượng',
+            hintText: '1',
+          ),
+          onFieldSubmitted: (_) => _submit(),
+          validator: (value) {
+            final parsed = int.tryParse((value ?? '').trim());
+            if (parsed == null || parsed <= 0) {
+              return 'Nhập số lượng hợp lệ';
+            }
+            return null;
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Hủy'),
+        ),
+        TextButton(
+          onPressed: _submit,
+          child: Text(widget.submitLabel),
+        ),
+      ],
     );
   }
 }

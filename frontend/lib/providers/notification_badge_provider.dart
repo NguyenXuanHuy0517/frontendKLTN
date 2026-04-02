@@ -14,22 +14,21 @@ class NotificationBadgeProvider extends ChangeNotifier {
 
   Future<void> refreshHost(int userId) async {
     try {
-      final notifications = await _hostNotificationService.getNotifications(userId);
-      setHostUnreadCount(
-        notifications.where((item) => !item.isRead).length,
-      );
+      setHostUnreadCount(await _hostNotificationService.getUnreadCount(userId));
     } catch (_) {}
   }
 
   Future<void> refreshTenant(int userId) async {
     try {
       final response = await ApiClient.instance.tenantDio.get(
-        '/api/tenant/notifications',
+        '/api/tenant/notifications/unread-count',
         queryParameters: {'userId': userId},
       );
-      final data = response.data['data'] as List<dynamic>? ?? const [];
+      final data = response.data['data'];
       setTenantUnreadCount(
-        data.where((item) => item is Map && item['isRead'] != true).length,
+        data is int
+            ? data
+            : (data is num ? data.toInt() : int.tryParse('$data') ?? 0),
       );
     } catch (_) {}
   }

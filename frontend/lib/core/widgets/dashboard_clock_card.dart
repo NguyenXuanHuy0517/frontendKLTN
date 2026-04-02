@@ -105,10 +105,7 @@ class _DashboardClockCardState extends State<DashboardClockCard> {
             ],
           ),
           SizedBox(height: timeSpacing),
-          Text(
-            _timeLabel,
-            style: timeStyle.copyWith(color: fg),
-          ),
+          Text(_timeLabel, style: timeStyle.copyWith(color: fg)),
           SizedBox(height: dateSpacing),
           Text(
             _dateLabel,

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/session/session_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/app_button.dart';
@@ -10,7 +11,6 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/avatar_picker_widget.dart';
-import '../../../core/widgets/tenant_bottom_nav.dart';
 import '../../../data/models/tenant_profile_model.dart';
 import '../../../data/services/tenant_profile_service.dart';
 import '../../../providers/auth_provider.dart';
@@ -20,10 +20,7 @@ import '../../../providers/theme_provider.dart';
 class TenantProfileScreen extends StatefulWidget {
   final bool showNavigation;
 
-  const TenantProfileScreen({
-    super.key,
-    this.showNavigation = true,
-  });
+  const TenantProfileScreen({super.key, this.showNavigation = true});
 
   @override
   State<TenantProfileScreen> createState() => _TenantProfileScreenState();
@@ -170,6 +167,11 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
       _nameCtrl.text = profile.fullName;
       _phoneCtrl.text = profile.phoneNumber;
     });
+    SessionStore.instance.updateProfile(
+      fullName: profile.fullName,
+      email: profile.email,
+    );
+    context.read<AuthProvider>().refreshSessionUser();
   }
 
   /// Lưu avatarUrl mới vào SharedPreferences để các màn hình khác
@@ -398,7 +400,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: AppColors.error.withOpacity(0.1),
+                              color: AppColors.error.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(
@@ -426,9 +428,7 @@ class _TenantProfileScreenState extends State<TenantProfileScreen> {
                 ),
               ),
             ),
-      bottomNavigationBar: widget.showNavigation
-          ? const TenantBottomNav(currentIndex: 5)
-          : null,
+      bottomNavigationBar: null,
     );
   }
 }

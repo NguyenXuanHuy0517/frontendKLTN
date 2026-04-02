@@ -48,17 +48,13 @@ class _AppTextFieldState extends State<AppTextField> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final subtext =
-    isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.label,
-          style: AppTextStyles.label.copyWith(color: subtext),
-        ),
+        Text(widget.label, style: AppTextStyles.label.copyWith(color: subtext)),
         const SizedBox(height: 6),
         TextFormField(
           controller: widget.controller,
@@ -78,13 +74,13 @@ class _AppTextFieldState extends State<AppTextField> {
                 : null,
             suffixIcon: widget.obscure
                 ? IconButton(
-              icon: Icon(
-                _obscure ? Icons.visibility_off : Icons.visibility,
-                size: 18,
-                color: subtext,
-              ),
-              onPressed: () => setState(() => _obscure = !_obscure),
-            )
+                    icon: Icon(
+                      _obscure ? Icons.visibility_off : Icons.visibility,
+                      size: 18,
+                      color: subtext,
+                    ),
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  )
                 : widget.suffix,
           ),
         ),

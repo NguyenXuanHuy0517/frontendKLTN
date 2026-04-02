@@ -36,10 +36,7 @@ class AppEmpty extends StatelessWidget {
             ),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 20),
-              TextButton(
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
+              TextButton(onPressed: onAction, child: Text(actionLabel!)),
             ],
           ],
         ),

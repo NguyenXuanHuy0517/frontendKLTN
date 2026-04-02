@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -5,14 +7,16 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/currency_utils.dart';
-import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_loading.dart';
+import '../../../core/widgets/error_retry_widget.dart';
 import '../../../core/widgets/host_bottom_nav.dart';
+import '../../../core/widgets/list_search_field.dart';
+import '../../../core/widgets/paged_load_more.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../data/models/room_model.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../providers/room_provider.dart';
+import '../../../providers/host_room_list_provider.dart';
 
 class RoomListScreen extends StatefulWidget {
   final int? areaId;
@@ -25,40 +29,81 @@ class RoomListScreen extends StatefulWidget {
 
 class _RoomListScreenState extends State<RoomListScreen>
     with SingleTickerProviderStateMixin {
-  int? _hostId;
-  late TabController _tabCtrl;
-  String _search = '';
-
   final _tabs = const ['Tat ca', 'Trong', 'Dang thue', 'Bao tri'];
   final _statuses = const ['', 'AVAILABLE', 'RENTED', 'MAINTENANCE'];
+  final _searchController = TextEditingController();
+
+  late final TabController _tabCtrl;
+
+  Timer? _searchDebounce;
+  int? _hostId;
+  String? _bootstrapError;
 
   bool get _hasAreaFilter => widget.areaId != null;
+  String get _currentStatus => _statuses[_tabCtrl.index];
 
   @override
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: _tabs.length, vsync: this);
-    _load();
+    _tabCtrl.addListener(_handleTabChanged);
+    _bootstrap();
   }
 
   @override
   void dispose() {
-    _tabCtrl.dispose();
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    _tabCtrl
+      ..removeListener(_handleTabChanged)
+      ..dispose();
     super.dispose();
   }
 
-  Future<void> _load() async {
-    final authProvider = context.read<AuthProvider>();
-    final roomProvider = context.read<RoomProvider>();
-    _hostId = await authProvider.getUserId();
-    if (!mounted || _hostId == null) return;
+  @override
+  void didUpdateWidget(covariant RoomListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.areaId == widget.areaId || _hostId == null) {
+      return;
+    }
+    context.read<HostRoomListProvider>().bootstrap(
+      hostId: _hostId!,
+      areaId: widget.areaId,
+    );
+  }
 
-    if (_hasAreaFilter) {
-      await roomProvider.fetchRoomsByArea(widget.areaId!);
+  Future<void> _bootstrap() async {
+    final hostId = await context.read<AuthProvider>().getUserId();
+    if (!mounted) return;
+
+    if (hostId == null) {
+      setState(() {
+        _bootstrapError = 'Khong xac dinh duoc tai khoan chu tro hien tai.';
+      });
       return;
     }
 
-    await roomProvider.fetchRooms(_hostId!);
+    _hostId = hostId;
+    final provider = context.read<HostRoomListProvider>();
+    final initialTab = _statuses.indexOf(provider.status);
+    if (initialTab >= 0 && _tabCtrl.index != initialTab) {
+      _tabCtrl.index = initialTab;
+    }
+    _searchController.text = provider.search;
+    await provider.bootstrap(hostId: hostId, areaId: widget.areaId);
+  }
+
+  void _handleTabChanged() {
+    if (_tabCtrl.indexIsChanging || _hostId == null) return;
+    context.read<HostRoomListProvider>().applyFilters(status: _currentStatus);
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 300),
+      () => context.read<HostRoomListProvider>().applyFilters(search: value),
+    );
   }
 
   void _clearAreaFilter() {
@@ -73,25 +118,8 @@ class _RoomListScreenState extends State<RoomListScreen>
     context.push('/host/rooms/new');
   }
 
-  List<RoomModel> _filtered(List<RoomModel> rooms, int tabIndex) {
-    var list = rooms;
-    final status = _statuses[tabIndex];
-    if (status.isNotEmpty) {
-      list = list.where((room) => room.status == status).toList();
-    }
-    if (_search.isNotEmpty) {
-      list = list
-          .where(
-            (room) =>
-                room.roomCode.toLowerCase().contains(_search.toLowerCase()) ||
-                room.areaName.toLowerCase().contains(_search.toLowerCase()),
-          )
-          .toList();
-    }
-    return list;
-  }
-
-  String _areaFilterLabel(List<RoomModel> rooms) {
+  String _areaFilterLabel() {
+    final rooms = context.read<HostRoomListProvider>().state.items;
     if (rooms.isNotEmpty) {
       return 'Dang loc: ${rooms.first.areaName}';
     }
@@ -103,9 +131,7 @@ class _RoomListScreenState extends State<RoomListScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
-    final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-    final roomProvider = context.watch<RoomProvider>();
 
     return Scaffold(
       backgroundColor: bg,
@@ -137,36 +163,10 @@ class _RoomListScreenState extends State<RoomListScreen>
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: TextField(
-                  onChanged: (value) => setState(() => _search = value),
-                  style: AppTextStyles.body.copyWith(color: fg),
-                  decoration: InputDecoration(
-                    hintText: 'Tim theo ma phong, khu tro...',
-                    hintStyle: AppTextStyles.bodySmall.copyWith(color: subtext),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: subtext,
-                      size: 20,
-                    ),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                    filled: true,
-                    fillColor: isDark
-                        ? AppColors.darkCard
-                        : AppColors.lightCard,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.accent),
-                    ),
-                  ),
+                child: ListSearchField(
+                  controller: _searchController,
+                  hintText: 'Tim theo ma phong, khu tro...',
+                  onChanged: _onSearchChanged,
                 ),
               ),
               if (_hasAreaFilter)
@@ -196,7 +196,7 @@ class _RoomListScreenState extends State<RoomListScreen>
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            _areaFilterLabel(roomProvider.rooms),
+                            _areaFilterLabel(),
                             style: AppTextStyles.caption.copyWith(
                               color: AppColors.accent,
                               fontWeight: FontWeight.w600,
@@ -232,36 +232,63 @@ class _RoomListScreenState extends State<RoomListScreen>
           ),
         ),
       ),
-      body: roomProvider.loading
-          ? const AppLoading()
-          : TabBarView(
-              controller: _tabCtrl,
-              children: List.generate(_tabs.length, (index) {
-                final list = _filtered(roomProvider.rooms, index);
-                if (list.isEmpty) {
-                  return AppEmpty(
-                    message: _hasAreaFilter
-                        ? 'Khong co phong nao trong khu tro nay'
-                        : 'Khong co phong nao',
-                    icon: Icons.meeting_room_outlined,
-                    actionLabel: index == 0 ? 'Them phong' : null,
-                    onAction: index == 0 ? _openCreateRoom : null,
-                  );
-                }
-                return RefreshIndicator(
-                  color: AppColors.accent,
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(24),
-                    itemCount: list.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, idx) =>
-                        _RoomCard(room: list[idx], isDark: isDark),
-                  ),
-                );
-              }),
-            ),
+      body: _buildBody(isDark),
       bottomNavigationBar: const HostBottomNav(currentIndex: 1),
+    );
+  }
+
+  Widget _buildBody(bool isDark) {
+    if (_bootstrapError != null) {
+      return ErrorRetryWidget(message: _bootstrapError!, onRetry: _bootstrap);
+    }
+
+    final state = context.watch<HostRoomListProvider>().state;
+
+    if (state.loading) {
+      return const AppLoading();
+    }
+
+    if (state.error != null) {
+      return ErrorRetryWidget(
+        message: state.error!,
+        onRetry: () => context.read<HostRoomListProvider>().refresh(),
+      );
+    }
+
+    if (state.items.isEmpty) {
+      return AppEmpty(
+        message: _hasAreaFilter
+            ? 'Không có phòng nào trong khu trọ này'
+            : 'Không có phòng nào',
+        icon: Icons.meeting_room_outlined,
+        actionLabel: _tabCtrl.index == 0 ? 'Thêm phòng' : null,
+        onAction: _tabCtrl.index == 0 ? _openCreateRoom : null,
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.accent,
+      onRefresh: () => context.read<HostRoomListProvider>().refresh(),
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+        itemCount:
+            state.items.length + ((state.hasNext || state.loadingMore) ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == state.items.length) {
+            return PagedLoadMore(
+              loading: state.loadingMore,
+              hasNext: state.hasNext,
+              onPressed: () => context.read<HostRoomListProvider>().loadMore(),
+            );
+          }
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _RoomCard(room: state.items[index], isDark: isDark),
+          );
+        },
+      ),
     );
   }
 }
@@ -277,85 +304,103 @@ class _RoomCard extends StatelessWidget {
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
-    return AppCard(
-      onTap: () => context.push('/host/rooms/${room.roomId}'),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: _statusColor(room.status).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              Icons.meeting_room_outlined,
-              color: _statusColor(room.status),
-              size: 24,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push('/host/rooms/${room.roomId}'),
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : AppColors.lightCard,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Phong ${room.roomCode}',
-                      style: AppTextStyles.body.copyWith(
-                        color: fg,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    StatusBadge(status: room.status),
-                  ],
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _statusColor(room.status).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  room.areaName,
-                  style: AppTextStyles.bodySmall.copyWith(color: subtext),
+                child: Icon(
+                  Icons.meeting_room_outlined,
+                  color: _statusColor(room.status),
+                  size: 24,
                 ),
-                const SizedBox(height: 4),
-                Row(
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.attach_money_rounded,
-                      size: 14,
-                      color: AppColors.accent,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      CurrencyUtils.format(room.basePrice),
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.accent,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (room.currentTenantName != null) ...[
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.person_outline_rounded,
-                        size: 14,
-                        color: subtext,
-                      ),
-                      const SizedBox(width: 2),
-                      Flexible(
-                        child: Text(
-                          room.currentTenantName!,
-                          style: AppTextStyles.caption.copyWith(color: subtext),
-                          overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Phong ${room.roomCode}',
+                            style: AppTextStyles.body.copyWith(
+                              color: fg,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        StatusBadge(status: room.status),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      room.areaName,
+                      style: AppTextStyles.bodySmall.copyWith(color: subtext),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.attach_money_rounded,
+                          size: 14,
+                          color: AppColors.accent,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          CurrencyUtils.format(room.basePrice),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (room.currentTenantName != null) ...[
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.person_outline_rounded,
+                            size: 14,
+                            color: subtext,
+                          ),
+                          const SizedBox(width: 2),
+                          Flexible(
+                            child: Text(
+                              room.currentTenantName!,
+                              style: AppTextStyles.caption.copyWith(
+                                color: subtext,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: subtext, size: 20),
+            ],
           ),
-          Icon(Icons.chevron_right_rounded, color: subtext, size: 20),
-        ],
+        ),
       ),
     );
   }

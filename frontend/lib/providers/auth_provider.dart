@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/session/session_store.dart';
 import '../data/models/user_model.dart';
 import '../data/services/auth_service.dart';
 
@@ -9,6 +10,11 @@ class AuthProvider extends ChangeNotifier {
   UserModel? _user;
   bool _loading = false;
   String? _error;
+
+  AuthProvider() {
+    _syncFromSession();
+    SessionStore.instance.addListener(_handleSessionChanged);
+  }
 
   UserModel? get user => _user;
   bool get loading => _loading;
@@ -113,6 +119,20 @@ class AuthProvider extends ChangeNotifier {
 
   Future<int?> getUserId() => _service.getUserId();
 
+  void refreshSessionUser() {
+    _syncFromSession();
+    notifyListeners();
+  }
+
+  void _handleSessionChanged() {
+    _syncFromSession();
+    notifyListeners();
+  }
+
+  void _syncFromSession() {
+    _user = SessionStore.instance.toUserModel();
+  }
+
   String _parseError(dynamic error) {
     final message = error.toString();
     if (message.contains('401') || message.contains('403')) {
@@ -123,5 +143,11 @@ class AuthProvider extends ChangeNotifier {
       return 'Không có kết nối mạng';
     }
     return 'Đã có lỗi xảy ra, vui lòng thử lại';
+  }
+
+  @override
+  void dispose() {
+    SessionStore.instance.removeListener(_handleSessionChanged);
+    super.dispose();
   }
 }

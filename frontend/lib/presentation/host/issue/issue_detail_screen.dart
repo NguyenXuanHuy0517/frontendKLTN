@@ -43,10 +43,10 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     setState(() => _submitting = true);
 
     final ok = await context.read<IssueProvider>().updateStatus(
-          widget.issueId,
-          newStatus,
-          _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
-        );
+      widget.issueId,
+      newStatus,
+      _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+    );
 
     if (!mounted) return;
     setState(() => _submitting = false);
@@ -98,11 +98,14 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: _priorityColor(issue.priority).withValues(alpha: 0.06),
+                      color: _priorityColor(
+                        issue.priority,
+                      ).withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _priorityColor(issue.priority)
-                            .withValues(alpha: 0.2),
+                        color: _priorityColor(
+                          issue.priority,
+                        ).withValues(alpha: 0.2),
                       ),
                     ),
                     child: Column(
@@ -145,8 +148,9 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: _priorityColor(issue.priority)
-                                    .withValues(alpha: 0.15),
+                                color: _priorityColor(
+                                  issue.priority,
+                                ).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -284,7 +288,8 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  if (issue.status == 'OPEN' || issue.status == 'PROCESSING') ...[
+                  if (issue.status == 'OPEN' ||
+                      issue.status == 'PROCESSING') ...[
                     AppCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,10 +429,7 @@ class _ServiceSuggestionCard extends StatelessWidget {
           ),
           if (note.trim().isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(
-              note,
-              style: AppTextStyles.bodySmall.copyWith(color: subtext),
-            ),
+            Text(note, style: AppTextStyles.bodySmall.copyWith(color: subtext)),
           ],
           if ((areaName ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: 10),

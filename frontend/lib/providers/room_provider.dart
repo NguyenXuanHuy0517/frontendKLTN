@@ -49,11 +49,15 @@ class RoomProvider extends ChangeNotifier {
   }
 
   Future<void> fetchRoomDetail(int roomId) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
     try {
       _selected = await _service.getRoomDetail(roomId);
-      notifyListeners();
     } catch (e) {
       _error = 'Không tải được chi tiết phòng';
+    } finally {
+      _loading = false;
       notifyListeners();
     }
   }
@@ -88,7 +92,11 @@ class RoomProvider extends ChangeNotifier {
   }
 
   Future<bool> updateStatus(
-      int roomId, String status, String? note, int changedById) async {
+    int roomId,
+    String status,
+    String? note,
+    int changedById,
+  ) async {
     try {
       await _service.updateStatus(roomId, status, note, changedById);
       final idx = _rooms.indexWhere((r) => r.roomId == roomId);

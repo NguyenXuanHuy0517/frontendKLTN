@@ -66,12 +66,13 @@ class _AdminRoomAuditScreenState extends State<AdminRoomAuditScreen>
   Widget build(BuildContext context) {
     final provider = context.watch<AdminRoomProvider>();
     final allHosts = {
-      ...provider.rooms.map((item) => item.hostName).where((item) => item.isNotEmpty),
+      ...provider.rooms
+          .map((item) => item.hostName)
+          .where((item) => item.isNotEmpty),
       ...provider.missingInvoiceRooms
           .map((item) => item.hostName)
           .where((item) => item.isNotEmpty),
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     final roomList = _applyFilter(provider.rooms);
     final missingList = _applyFilter(provider.missingInvoiceRooms);
 
@@ -86,55 +87,60 @@ class _AdminRoomAuditScreenState extends State<AdminRoomAuditScreen>
           tooltip: 'Tai lai',
         ),
       ],
-      child: provider.loading && provider.rooms.isEmpty && provider.missingInvoiceRooms.isEmpty
+      child:
+          provider.loading &&
+              provider.rooms.isEmpty &&
+              provider.missingInvoiceRooms.isEmpty
           ? const AppLoading()
-          : provider.error != null && provider.rooms.isEmpty && provider.missingInvoiceRooms.isEmpty
-              ? AppEmpty(
-                  message: provider.error!,
-                  icon: Icons.rule_folder_outlined,
-                  actionLabel: 'Thu lai',
-                  onAction: _load,
-                )
-              : Column(
-                  children: [
-                    _RoomAuditSummary(
-                      totalRooms: provider.rooms.length,
-                      missingInvoices: provider.missingInvoiceRooms.length,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-                      child: _RoomFilterBar(
-                        hosts: allHosts,
-                        host: _host,
-                        status: _status,
-                        onHostChanged: (value) => setState(() => _host = value),
-                        onStatusChanged: (value) => setState(() => _status = value),
-                        onSearchChanged: (value) => setState(() => _search = value),
-                      ),
-                    ),
-                    TabBar(
-                      controller: _tabController,
-                      labelColor: AppColors.accent,
-                      tabs: const [
-                        Tab(text: 'Tat ca'),
-                        Tab(text: 'Without invoice'),
-                      ],
-                    ),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _load,
-                        color: AppColors.accent,
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _RoomAuditBody(rooms: roomList),
-                            _RoomAuditBody(rooms: missingList),
-                          ],
-                        ),
-                      ),
-                    ),
+          : provider.error != null &&
+                provider.rooms.isEmpty &&
+                provider.missingInvoiceRooms.isEmpty
+          ? AppEmpty(
+              message: provider.error!,
+              icon: Icons.rule_folder_outlined,
+              actionLabel: 'Thu lai',
+              onAction: _load,
+            )
+          : Column(
+              children: [
+                _RoomAuditSummary(
+                  totalRooms: provider.rooms.length,
+                  missingInvoices: provider.missingInvoiceRooms.length,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                  child: _RoomFilterBar(
+                    hosts: allHosts,
+                    host: _host,
+                    status: _status,
+                    onHostChanged: (value) => setState(() => _host = value),
+                    onStatusChanged: (value) => setState(() => _status = value),
+                    onSearchChanged: (value) => setState(() => _search = value),
+                  ),
+                ),
+                TabBar(
+                  controller: _tabController,
+                  labelColor: AppColors.accent,
+                  tabs: const [
+                    Tab(text: 'Tat ca'),
+                    Tab(text: 'Without invoice'),
                   ],
                 ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _load,
+                    color: AppColors.accent,
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _RoomAuditBody(rooms: roomList),
+                        _RoomAuditBody(rooms: missingList),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -366,9 +372,15 @@ class _RoomAuditCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(room.areaName, style: AppTextStyles.body2.copyWith(color: subtext)),
+          Text(
+            room.areaName,
+            style: AppTextStyles.body2.copyWith(color: subtext),
+          ),
           const SizedBox(height: 4),
-          Text('Host: ${room.hostName}', style: AppTextStyles.body2.copyWith(color: subtext)),
+          Text(
+            'Host: ${room.hostName}',
+            style: AppTextStyles.body2.copyWith(color: subtext),
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 16,
@@ -376,7 +388,9 @@ class _RoomAuditCard extends StatelessWidget {
             children: [
               _RoomMiniStat(
                 label: 'Tenant',
-                value: room.currentTenantName.isEmpty ? '-' : room.currentTenantName,
+                value: room.currentTenantName.isEmpty
+                    ? '-'
+                    : room.currentTenantName,
               ),
               _RoomMiniStat(
                 label: 'Base price',
@@ -398,10 +412,7 @@ class _RoomMiniStat extends StatelessWidget {
   final String label;
   final String value;
 
-  const _RoomMiniStat({
-    required this.label,
-    required this.value,
-  });
+  const _RoomMiniStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

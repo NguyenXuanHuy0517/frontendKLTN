@@ -53,8 +53,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           content: const Text('Đăng ký thành công! Vui lòng đăng nhập.'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       context.go('/login');
@@ -64,8 +65,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           content: Text(auth.error ?? 'Đăng ký thất bại'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -87,8 +89,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: fg, size: 20),
           onPressed: () => context.pop(),
         ),
-        title: Text('Tạo tài khoản',
-            style: AppTextStyles.h3.copyWith(color: fg)),
+        title: Text(
+          'Tạo tài khoản',
+          style: AppTextStyles.h3.copyWith(color: fg),
+        ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

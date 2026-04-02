@@ -30,9 +30,10 @@ class _SectionBadgeState extends State<SectionBadge>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    _anim = Tween(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _anim = Tween(
+      begin: 0.4,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
     if (widget.pulse) {
       _controller.repeat(reverse: true);
     }
@@ -62,10 +63,7 @@ class _SectionBadgeState extends State<SectionBadge>
               child: Container(
                 width: 6,
                 height: 6,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
             ),
             const SizedBox(width: 6),

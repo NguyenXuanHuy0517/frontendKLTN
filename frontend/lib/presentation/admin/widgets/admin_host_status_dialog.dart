@@ -7,10 +7,7 @@ class AdminHostStatusDialogResult {
   final String reason;
   final String note;
 
-  const AdminHostStatusDialogResult({
-    required this.reason,
-    required this.note,
-  });
+  const AdminHostStatusDialogResult({required this.reason, required this.note});
 }
 
 class AdminHostStatusDialog extends StatefulWidget {
@@ -30,10 +27,8 @@ class AdminHostStatusDialog extends StatefulWidget {
   }) {
     return showDialog<AdminHostStatusDialogResult>(
       context: context,
-      builder: (_) => AdminHostStatusDialog(
-        hostName: hostName,
-        activating: activating,
-      ),
+      builder: (_) =>
+          AdminHostStatusDialog(hostName: hostName, activating: activating),
     );
   }
 
@@ -108,9 +103,7 @@ class _AdminHostStatusDialogState extends State<AdminHostStatusDialog> {
             TextField(
               controller: _noteController,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Ghi chú thêm',
-              ),
+              decoration: const InputDecoration(labelText: 'Ghi chú thêm'),
             ),
           ],
         ),
@@ -123,8 +116,9 @@ class _AdminHostStatusDialogState extends State<AdminHostStatusDialog> {
         FilledButton(
           onPressed: _submit,
           style: FilledButton.styleFrom(
-            backgroundColor:
-                widget.activating ? AppColors.success : AppColors.error,
+            backgroundColor: widget.activating
+                ? AppColors.success
+                : AppColors.error,
           ),
           child: Text(widget.activating ? 'Mở khóa' : 'Khóa host'),
         ),

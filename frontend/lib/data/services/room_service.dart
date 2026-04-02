@@ -1,4 +1,5 @@
 import '../models/room_model.dart';
+import '../models/paged_result.dart';
 import 'api_client.dart';
 import '../../core/constants/api_constants.dart';
 
@@ -13,6 +14,33 @@ class RoomService {
     return (res.data['data'] as List)
         .map((e) => RoomModel.fromJson(e))
         .toList();
+  }
+
+  Future<PagedResult<RoomModel>> getRoomsPage({
+    required int hostId,
+    int? areaId,
+    String? status,
+    String? search,
+    int page = 0,
+    int size = 20,
+    String sort = 'roomCode,asc',
+  }) async {
+    final res = await _dio.get(
+      '${ApiConstants.rooms}/paged',
+      queryParameters: {
+        'hostId': hostId,
+        'page': page,
+        'size': size,
+        'sort': sort,
+        if (areaId != null) 'areaId': areaId,
+        if ((status ?? '').trim().isNotEmpty) 'status': status!.trim(),
+        if ((search ?? '').trim().isNotEmpty) 'search': search!.trim(),
+      },
+    );
+    return PagedResult.fromJson(
+      Map<String, dynamic>.from(res.data['data'] as Map),
+      RoomModel.fromJson,
+    );
   }
 
   Future<List<RoomModel>> getRoomsByArea(int areaId) async {
@@ -38,7 +66,11 @@ class RoomService {
   }
 
   Future<void> updateStatus(
-      int roomId, String status, String? note, int changedById) async {
+    int roomId,
+    String status,
+    String? note,
+    int changedById,
+  ) async {
     await _dio.patch(
       '${ApiConstants.rooms}/$roomId/status',
       queryParameters: {'changedById': changedById},

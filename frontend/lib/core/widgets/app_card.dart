@@ -31,12 +31,12 @@ class AppCard extends StatelessWidget {
         ),
         boxShadow: featured
             ? [
-          BoxShadow(
-            color: AppColors.accent.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ]
+                BoxShadow(
+                  color: AppColors.accent.withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ]
             : null,
       ),
       child: Material(

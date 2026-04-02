@@ -1,8 +1,7 @@
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'api_client.dart';
 import '../../core/constants/api_constants.dart';
-import '../../core/constants/storage_keys.dart';
+import '../../core/session/session_store.dart';
 
 class AuthService {
   final _dio = ApiClient.instance.authDio;
@@ -28,20 +27,20 @@ class AuthService {
     final endpoint = accountType.toUpperCase() == 'HOST'
         ? ApiConstants.registerHost
         : ApiConstants.registerTenant;
-    await _dio.post(endpoint, data: {
-      'fullName': fullName,
-      'email': email,
-      'password': password,
-      'phoneNumber': phoneNumber,
-      'idCardNumber': idCardNumber,
-    });
+    await _dio.post(
+      endpoint,
+      data: {
+        'fullName': fullName,
+        'email': email,
+        'password': password,
+        'phoneNumber': phoneNumber,
+        'idCardNumber': idCardNumber,
+      },
+    );
   }
 
   Future<void> forgotPassword(String email) async {
-    await _dio.post(
-      ApiConstants.forgotPassword,
-      data: {'email': email},
-    );
+    await _dio.post(ApiConstants.forgotPassword, data: {'email': email});
   }
 
   Future<void> resetPassword({
@@ -55,31 +54,19 @@ class AuthService {
   }
 
   Future<void> _saveUser(UserModel user) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(StorageKeys.token, user.token);
-    await prefs.setInt(StorageKeys.userId, user.userId);
-    await prefs.setString(StorageKeys.role, user.role);
-    await prefs.setString(StorageKeys.fullName, user.fullName);
-    await prefs.setString(StorageKeys.email, user.email);
+    await SessionStore.instance.saveUser(user);
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await SessionStore.instance.clear();
   }
 
-  Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(StorageKeys.token) != null;
-  }
+  Future<bool> isLoggedIn() async => SessionStore.instance.isLoggedIn;
 
-  Future<String?> getRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(StorageKeys.role);
-  }
+  Future<String?> getRole() async => SessionStore.instance.role;
 
-  Future<int?> getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(StorageKeys.userId);
-  }
+  Future<int?> getUserId() async => SessionStore.instance.userId;
+
+  Future<bool> getRequiresRentalJoin() async =>
+      SessionStore.instance.requiresRentalJoin;
 }

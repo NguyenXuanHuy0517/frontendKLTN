@@ -30,7 +30,7 @@ class IssueProvider extends ChangeNotifier {
     try {
       _issues = await _service.getIssues(hostId, issueType: issueType);
     } catch (_) {
-      _error = 'Không tải được danh sách khiếu nại';
+      _error = 'KhÃ´ng táº£i Ä‘Æ°á»£c danh sÃ¡ch khiáº¿u náº¡i';
     } finally {
       _loading = false;
       notifyListeners();
@@ -42,7 +42,7 @@ class IssueProvider extends ChangeNotifier {
       _selected = await _service.getIssueDetail(issueId);
       notifyListeners();
     } catch (_) {
-      _error = 'Không tải được chi tiết khiếu nại';
+      _error = 'KhÃ´ng táº£i Ä‘Æ°á»£c chi tiáº¿t khiáº¿u náº¡i';
       notifyListeners();
     }
   }
@@ -52,26 +52,9 @@ class IssueProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      if (_issues.isEmpty || !_issues.any((item) => item.issueId == issueId)) {
-        final response = await ApiClient.instance.tenantDio.get(
-          ApiConstants.tenantIssues,
-          queryParameters: {'userId': userId},
-        );
-        _issues = (response.data['data'] as List)
-            .map((item) => IssueModel.fromJson(item))
-            .toList();
-      }
-
-      _selected = _issues.cast<IssueModel?>().firstWhere(
-            (item) => item?.issueId == issueId,
-            orElse: () => null,
-          );
-
-      if (_selected == null) {
-        _error = 'Không tải được chi tiết khiếu nại';
-      }
+      _selected = await _service.getTenantIssueDetail(userId, issueId);
     } catch (_) {
-      _error = 'Không tải được chi tiết khiếu nại';
+      _error = 'KhÃ´ng táº£i Ä‘Æ°á»£c chi tiáº¿t khiáº¿u náº¡i';
     } finally {
       _loading = false;
       notifyListeners();
@@ -93,7 +76,7 @@ class IssueProvider extends ChangeNotifier {
       }
       return true;
     } catch (_) {
-      _error = 'Cập nhật trạng thái thất bại';
+      _error = 'Cáº­p nháº­t tráº¡ng thÃ¡i tháº¥t báº¡i';
       notifyListeners();
       return false;
     }
@@ -112,7 +95,7 @@ class IssueProvider extends ChangeNotifier {
           .map((item) => IssueModel.fromJson(item))
           .toList();
     } catch (_) {
-      _error = 'Không tải được danh sách khiếu nại';
+      _error = 'KhÃ´ng táº£i Ä‘Æ°á»£c danh sÃ¡ch khiáº¿u náº¡i';
     } finally {
       _loading = false;
       notifyListeners();
@@ -154,10 +137,7 @@ class IssueProvider extends ChangeNotifier {
     final response = await ApiClient.instance.tenantDio.patch(
       '${ApiConstants.tenantIssues}/$issueId/rating',
       queryParameters: {'userId': userId},
-      data: {
-        'rating': rating,
-        'tenantFeedback': feedback,
-      },
+      data: {'rating': rating, 'tenantFeedback': feedback},
     );
     final updated = IssueModel.fromJson(response.data['data']);
     _selected = updated;

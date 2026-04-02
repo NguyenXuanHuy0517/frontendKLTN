@@ -43,11 +43,12 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
     if (!confirm || !mounted) return;
 
     final hostId = await context.read<AuthProvider>().getUserId();
-    if (!mounted) return;
+    if (!mounted || hostId == null) return;
 
-    final ok = await context
-        .read<ContractProvider>()
-        .terminateContract(widget.contractId, hostId!);
+    final ok = await context.read<ContractProvider>().terminateContract(
+      widget.contractId,
+      hostId,
+    );
 
     if (!mounted) return;
     if (ok) {
@@ -56,7 +57,9 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
           content: const Text('Chấm dứt hợp đồng thành công'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       context.pop();
@@ -186,6 +189,41 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
                       ],
                     ),
                   ),
+                  if (contract.hasDeposit) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Thông tin tiền cọc',
+                      style: AppTextStyles.h3.copyWith(color: fg),
+                    ),
+                    const SizedBox(height: 12),
+                    AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _InfoRow(
+                            label: 'Số tiền cọc',
+                            value: CurrencyUtils.format(contract.depositAmount!),
+                            valueColor: AppColors.info,
+                            isDark: isDark,
+                          ),
+                          if (contract.depositDate?.isNotEmpty ?? false) ...[
+                            Divider(color: border, height: 24),
+                            _InfoRow(
+                              label: 'Ngày cọc',
+                              value: AppDateUtils.formatDateTime(
+                                contract.depositDate,
+                              ),
+                              isDark: isDark,
+                            ),
+                          ],
+                          if (contract.depositStatus?.isNotEmpty ?? false) ...[
+                            const SizedBox(height: 14),
+                            StatusBadge(status: contract.depositStatus!),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                   if (contract.contractServices.isNotEmpty ||
                       contract.serviceNames.isNotEmpty) ...[
                     const SizedBox(height: 20),
@@ -198,67 +236,67 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
                       child: Column(
                         children: contract.contractServices.isNotEmpty
                             ? contract.contractServices
-                                .map(
-                                  (service) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 6,
+                                  .map(
+                                    (service) => Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.check_circle_outline,
+                                            size: 16,
+                                            color: AppColors.success,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              service.quantity > 1
+                                                  ? '${service.serviceName} x${service.quantity}'
+                                                  : service.serviceName,
+                                              style: AppTextStyles.body.copyWith(
+                                                color: fg,
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            '${CurrencyUtils.format(service.displayPrice)}/${service.displayUnit}',
+                                            style: AppTextStyles.bodySmall
+                                                .copyWith(
+                                                  color: AppColors.accent,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.check_circle_outline,
-                                          size: 16,
-                                          color: AppColors.success,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            service.quantity > 1
-                                                ? '${service.serviceName} x${service.quantity}'
-                                                : service.serviceName,
+                                  )
+                                  .toList()
+                            : contract.serviceNames
+                                  .map(
+                                    (serviceName) => Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.check_circle_outline,
+                                            size: 16,
+                                            color: AppColors.success,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            serviceName,
                                             style: AppTextStyles.body.copyWith(
                                               color: fg,
                                             ),
                                           ),
-                                        ),
-                                        Text(
-                                          '${CurrencyUtils.format(service.displayPrice)}/${service.displayUnit}',
-                                          style:
-                                              AppTextStyles.bodySmall.copyWith(
-                                            color: AppColors.accent,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                )
-                                .toList()
-                            : contract.serviceNames
-                                .map(
-                                  (serviceName) => Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 6,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.check_circle_outline,
-                                          size: 16,
-                                          color: AppColors.success,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          serviceName,
-                                          style: AppTextStyles.body.copyWith(
-                                            color: fg,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                .toList(),
+                                  )
+                                  .toList(),
                       ),
                     ),
                   ],
@@ -279,10 +317,13 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
   }
 
   void _showExtendDialog(BuildContext context) {
+    final contractProvider = context.read<ContractProvider>();
+    final messenger = ScaffoldMessenger.of(context);
     DateTime? newEndDate;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogParentContext) => AlertDialog(
         title: const Text('Gia hạn hợp đồng'),
         content: StatefulBuilder(
           builder: (dialogContext, setDialogState) => Column(
@@ -302,8 +343,7 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
                     context: dialogContext,
                     initialDate: DateTime.now().add(const Duration(days: 30)),
                     firstDate: DateTime.now(),
-                    lastDate:
-                        DateTime.now().add(const Duration(days: 365 * 3)),
+                    lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
                   );
                   if (picked != null) {
                     setDialogState(() => newEndDate = picked);
@@ -315,25 +355,24 @@ class _ContractDetailScreenState extends State<ContractDetailScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogParentContext),
             child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () async {
               if (newEndDate == null) return;
-              Navigator.pop(ctx);
-              final ok = await context.read<ContractProvider>().extendContract(
-                    widget.contractId,
-                    newEndDate!.toIso8601String().split('T')[0],
-                  );
+              Navigator.pop(dialogParentContext);
+              final ok = await contractProvider.extendContract(
+                widget.contractId,
+                newEndDate!.toIso8601String().split('T')[0],
+              );
               if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
+              messenger.showSnackBar(
                 SnackBar(
                   content: Text(
                     ok ? 'Gia hạn thành công' : 'Gia hạn thất bại',
                   ),
-                  backgroundColor:
-                      ok ? AppColors.success : AppColors.error,
+                  backgroundColor: ok ? AppColors.success : AppColors.error,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -368,9 +407,13 @@ class _InfoRow extends StatelessWidget {
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: AppTextStyles.body.copyWith(color: subtext)),
+        Expanded(
+          child: Text(label, style: AppTextStyles.body.copyWith(color: subtext)),
+        ),
+        const SizedBox(width: 12),
         Text(
           value,
           style: AppTextStyles.body.copyWith(

@@ -39,10 +39,12 @@ class _TenantListScreenState extends State<TenantListScreen> {
   List<TenantModel> _filtered(List<TenantModel> tenants) {
     if (_search.isEmpty) return tenants;
     return tenants
-        .where((t) =>
-    t.fullName.toLowerCase().contains(_search.toLowerCase()) ||
-        t.phoneNumber.contains(_search) ||
-        t.email.toLowerCase().contains(_search.toLowerCase()))
+        .where(
+          (t) =>
+              t.fullName.toLowerCase().contains(_search.toLowerCase()) ||
+              t.phoneNumber.contains(_search) ||
+              t.email.toLowerCase().contains(_search.toLowerCase()),
+        )
         .toList();
   }
 
@@ -81,8 +83,11 @@ class _TenantListScreenState extends State<TenantListScreen> {
               decoration: InputDecoration(
                 hintText: 'Tìm theo tên, SĐT, email...',
                 hintStyle: AppTextStyles.bodySmall.copyWith(color: subtext),
-                prefixIcon:
-                Icon(Icons.search_rounded, color: subtext, size: 20),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: subtext,
+                  size: 20,
+                ),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 filled: true,
@@ -108,26 +113,26 @@ class _TenantListScreenState extends State<TenantListScreen> {
           ? const AppLoading()
           : list.isEmpty
           ? AppEmpty(
-        message: _search.isEmpty
-            ? 'Chưa có người thuê nào'
-            : 'Không tìm thấy kết quả',
-        icon: Icons.people_outline_rounded,
-        actionLabel: _search.isEmpty ? 'Thêm người thuê' : null,
-        onAction: _search.isEmpty
-            ? () => context.push('/host/tenants/new')
-            : null,
-      )
+              message: _search.isEmpty
+                  ? 'Chưa có người thuê nào'
+                  : 'Không tìm thấy kết quả',
+              icon: Icons.people_outline_rounded,
+              actionLabel: _search.isEmpty ? 'Thêm người thuê' : null,
+              onAction: _search.isEmpty
+                  ? () => context.push('/host/tenants/new')
+                  : null,
+            )
           : RefreshIndicator(
-        color: AppColors.accent,
-        onRefresh: _load,
-        child: ListView.separated(
-          padding: const EdgeInsets.all(24),
-          itemCount: list.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (_, i) =>
-              _TenantCard(tenant: list[i], isDark: isDark),
-        ),
-      ),
+              color: AppColors.accent,
+              onRefresh: _load,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(24),
+                itemCount: list.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (_, i) =>
+                    _TenantCard(tenant: list[i], isDark: isDark),
+              ),
+            ),
       bottomNavigationBar: const HostBottomNav(currentIndex: 0),
     );
   }
@@ -191,8 +196,7 @@ class _TenantCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    StatusBadge(
-                        status: tenant.active ? 'ACTIVE' : 'EXPIRED'),
+                    StatusBadge(status: tenant.active ? 'ACTIVE' : 'EXPIRED'),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -204,8 +208,11 @@ class _TenantCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.meeting_room_outlined,
-                          size: 13, color: AppColors.accent),
+                      Icon(
+                        Icons.meeting_room_outlined,
+                        size: 13,
+                        color: AppColors.accent,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Phòng ${tenant.currentRoomCode}',

@@ -38,11 +38,7 @@ class AppPopupWindow {
         return Dialog(
           insetPadding: const EdgeInsets.all(24),
           clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: child,
-          ),
+          child: SizedBox(width: width, height: height, child: child),
         );
       },
     );

@@ -76,8 +76,9 @@ class AdminShell extends StatelessWidget {
                   color: isDark ? AppColors.darkCard : AppColors.lightCard,
                   border: Border(
                     right: BorderSide(
-                      color:
-                          isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
                     ),
                   ),
                 ),
@@ -183,8 +184,9 @@ class AdminShell extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Text(
                                   subtitle,
-                                  style:
-                                      AppTextStyles.body.copyWith(color: subtext),
+                                  style: AppTextStyles.body.copyWith(
+                                    color: subtext,
+                                  ),
                                 ),
                               ],
                             ),

@@ -4,6 +4,7 @@ class UserModel {
   final String email;
   final String role;
   final String token;
+  final bool requiresRentalJoin;
 
   UserModel({
     required this.userId,
@@ -11,6 +12,7 @@ class UserModel {
     required this.email,
     required this.role,
     required this.token,
+    this.requiresRentalJoin = false,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class UserModel {
       email: json['email'],
       role: json['role'],
       token: json['token'],
+      requiresRentalJoin: json['requiresRentalJoin'] ?? false,
     );
   }
 }

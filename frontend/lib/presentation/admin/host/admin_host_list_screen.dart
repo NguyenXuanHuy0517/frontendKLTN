@@ -70,49 +70,47 @@ class _AdminHostListScreenState extends State<AdminHostListScreen> {
       child: provider.loading && provider.hosts.isEmpty
           ? const AppLoading()
           : provider.error != null && provider.hosts.isEmpty
-              ? AppEmpty(
-                  message: provider.error!,
-                  icon: Icons.apartment_outlined,
-                  actionLabel: 'Thu lai',
-                  onAction: _load,
-                )
-              : Column(
-                  children: [
-                    _HostFilterBar(
-                      status: _status,
-                      onSearchChanged: (value) =>
-                          setState(() => _search = value),
-                      onStatusChanged: (value) =>
-                          setState(() => _status = value),
-                    ),
-                    Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _load,
-                        color: AppColors.accent,
-                        child: hosts.isEmpty
-                            ? ListView(
-                                children: const [
-                                  SizedBox(height: 80),
-                                  AppEmpty(
-                                    message: 'Khong co host phu hop bo loc.',
-                                    icon: Icons.filter_alt_off_outlined,
-                                  ),
-                                ],
-                              )
-                            : isWide
-                                ? _HostTable(hosts: hosts)
-                                : ListView.separated(
-                                    padding: const EdgeInsets.all(24),
-                                    itemCount: hosts.length,
-                                    separatorBuilder: (_, separatorIndex) =>
-                                        const SizedBox(height: 12),
-                                    itemBuilder: (_, index) =>
-                                        _HostCard(host: hosts[index]),
-                                  ),
-                      ),
-                    ),
-                  ],
+          ? AppEmpty(
+              message: provider.error!,
+              icon: Icons.apartment_outlined,
+              actionLabel: 'Thu lai',
+              onAction: _load,
+            )
+          : Column(
+              children: [
+                _HostFilterBar(
+                  status: _status,
+                  onSearchChanged: (value) => setState(() => _search = value),
+                  onStatusChanged: (value) => setState(() => _status = value),
                 ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _load,
+                    color: AppColors.accent,
+                    child: hosts.isEmpty
+                        ? ListView(
+                            children: const [
+                              SizedBox(height: 80),
+                              AppEmpty(
+                                message: 'Khong co host phu hop bo loc.',
+                                icon: Icons.filter_alt_off_outlined,
+                              ),
+                            ],
+                          )
+                        : isWide
+                        ? _HostTable(hosts: hosts)
+                        : ListView.separated(
+                            padding: const EdgeInsets.all(24),
+                            itemCount: hosts.length,
+                            separatorBuilder: (_, separatorIndex) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (_, index) =>
+                                _HostCard(host: hosts[index]),
+                          ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -148,9 +146,9 @@ class _HostFilterBar extends StatelessWidget {
             ),
           ),
           for (final item in const [
-            ('all', 'Tat ca'),
-            ('active', 'Dang hoat dong'),
-            ('inactive', 'Da khoa'),
+            ('all', 'Tất cả'),
+            ('active', 'Đang hoạt động'),
+            ('inactive', 'Đã khóa'),
           ])
             ChoiceChip(
               label: Text(item.$2),
@@ -199,7 +197,8 @@ class _HostTable extends StatelessWidget {
                               Text(
                                 host.email,
                                 style: AppTextStyles.bodySmall.copyWith(
-                                  color: Theme.of(context).brightness ==
+                                  color:
+                                      Theme.of(context).brightness ==
                                           Brightness.dark
                                       ? AppColors.darkSubtext
                                       : AppColors.lightSubtext,
@@ -302,10 +301,7 @@ class _HostMiniStat extends StatelessWidget {
   final String label;
   final String value;
 
-  const _HostMiniStat({
-    required this.label,
-    required this.value,
-  });
+  const _HostMiniStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {

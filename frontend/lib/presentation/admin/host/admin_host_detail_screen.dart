@@ -41,11 +41,11 @@ class _AdminHostDetailScreenState extends State<AdminHostDetailScreen> {
     if (!mounted || result == null) return;
 
     final ok = await context.read<AdminHostProvider>().updateHostStatus(
-          widget.hostId,
-          active: activating,
-          reason: result.reason,
-          note: result.note,
-        );
+      widget.hostId,
+      active: activating,
+      reason: result.reason,
+      note: result.note,
+    );
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -53,8 +53,8 @@ class _AdminHostDetailScreenState extends State<AdminHostDetailScreen> {
         content: Text(
           ok
               ? (activating
-                  ? 'Da mo khoa host thanh cong'
-                  : 'Da khoa host thanh cong')
+                    ? 'Da mo khoa host thanh cong'
+                    : 'Da khoa host thanh cong')
               : 'Khong cap nhat duoc trang thai host',
         ),
         backgroundColor: ok ? AppColors.success : AppColors.error,
@@ -81,32 +81,32 @@ class _AdminHostDetailScreenState extends State<AdminHostDetailScreen> {
       child: provider.detailLoading && host == null
           ? const AppLoading()
           : provider.error != null && host == null
-              ? AppEmpty(
-                  message: provider.error!,
-                  icon: Icons.person_off_outlined,
-                  actionLabel: 'Thu lai',
-                  onAction: _load,
-                )
-              : host == null
-                  ? const AppEmpty(message: 'Khong co du lieu host.')
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      color: AppColors.accent,
-                      child: ListView(
-                        padding: const EdgeInsets.all(24),
-                        children: [
-                          _HostHeroCard(
-                            host: host,
-                            loading: provider.statusUpdating,
-                            onToggle: () => _changeStatus(host),
-                          ),
-                          const SizedBox(height: 20),
-                          _HostMetricGrid(host: host),
-                          const SizedBox(height: 20),
-                          _HostContextPanel(host: host),
-                        ],
-                      ),
-                    ),
+          ? AppEmpty(
+              message: provider.error!,
+              icon: Icons.person_off_outlined,
+              actionLabel: 'Thu lai',
+              onAction: _load,
+            )
+          : host == null
+          ? const AppEmpty(message: 'Khong co du lieu host.')
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.accent,
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  _HostHeroCard(
+                    host: host,
+                    loading: provider.statusUpdating,
+                    onToggle: () => _changeStatus(host),
+                  ),
+                  const SizedBox(height: 20),
+                  _HostMetricGrid(host: host),
+                  const SizedBox(height: 20),
+                  _HostContextPanel(host: host),
+                ],
+              ),
+            ),
     );
   }
 }
@@ -154,9 +154,15 @@ class _HostHeroCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(host.fullName, style: AppTextStyles.h2.copyWith(color: fg)),
+                    Text(
+                      host.fullName,
+                      style: AppTextStyles.h2.copyWith(color: fg),
+                    ),
                     const SizedBox(height: 4),
-                    Text(host.email, style: AppTextStyles.body.copyWith(color: subtext)),
+                    Text(
+                      host.email,
+                      style: AppTextStyles.body.copyWith(color: subtext),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       host.phoneNumber.isEmpty
@@ -170,8 +176,9 @@ class _HostHeroCard extends StatelessWidget {
               FilledButton.icon(
                 onPressed: loading ? null : onToggle,
                 style: FilledButton.styleFrom(
-                  backgroundColor:
-                      host.isActive ? AppColors.error : AppColors.success,
+                  backgroundColor: host.isActive
+                      ? AppColors.error
+                      : AppColors.success,
                 ),
                 icon: Icon(
                   host.isActive
@@ -223,7 +230,11 @@ class _HostMetricGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final columns = width >= 1000 ? 3 : width >= 640 ? 2 : 1;
+        final columns = width >= 1000
+            ? 3
+            : width >= 640
+            ? 2
+            : 1;
         final itemWidth = (width - (columns - 1) * 16) / columns;
 
         return Wrap(
@@ -295,10 +306,7 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -321,10 +329,7 @@ class _StateBadge extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _StateBadge({
-    required this.label,
-    required this.color,
-  });
+  const _StateBadge({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {

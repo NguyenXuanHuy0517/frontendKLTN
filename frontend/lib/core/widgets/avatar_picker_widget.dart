@@ -213,31 +213,31 @@ class _AvatarPickerWidgetState extends State<AvatarPickerWidget> {
             child: ClipOval(
               child: _uploading
                   ? const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.accent,
-                  strokeWidth: 2,
-                ),
-              )
+                      child: CircularProgressIndicator(
+                        color: AppColors.accent,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : (_displayUrl != null && _displayUrl!.isNotEmpty)
                   ? Image.network(
-                _displayUrl!,
-                fit: BoxFit.cover,
-                // Hiển thị placeholder trong lúc tải
-                loadingBuilder: (_, child, progress) {
-                  if (progress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: progress.expectedTotalBytes != null
-                          ? progress.cumulativeBytesLoaded /
-                          progress.expectedTotalBytes!
-                          : null,
-                      color: AppColors.accent,
-                      strokeWidth: 2,
-                    ),
-                  );
-                },
-                errorBuilder: (_, __, ___) => _defaultAvatar(size),
-              )
+                      _displayUrl!,
+                      fit: BoxFit.cover,
+                      // Hiển thị placeholder trong lúc tải
+                      loadingBuilder: (_, child, progress) {
+                        if (progress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: progress.expectedTotalBytes != null
+                                ? progress.cumulativeBytesLoaded /
+                                      progress.expectedTotalBytes!
+                                : null,
+                            color: AppColors.accent,
+                            strokeWidth: 2,
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => _defaultAvatar(size),
+                    )
                   : _defaultAvatar(size),
             ),
           ),

@@ -43,9 +43,9 @@ class AdminDashboardModel {
       activeContracts: adminParseInt(json['activeContracts']),
       alerts: rawAlerts is List
           ? rawAlerts
-              .whereType<Map<String, dynamic>>()
-              .map(AdminAlertModel.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(AdminAlertModel.fromJson)
+                .toList()
           : const [],
     );
   }

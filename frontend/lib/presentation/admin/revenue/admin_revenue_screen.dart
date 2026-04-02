@@ -48,41 +48,41 @@ class _AdminRevenueScreenState extends State<AdminRevenueScreen> {
       child: provider.loading && revenue == null
           ? const AppLoading()
           : provider.error != null && revenue == null
-              ? AppEmpty(
-                  message: provider.error!,
-                  icon: Icons.show_chart_outlined,
-                  actionLabel: 'Thu lai',
-                  onAction: () => _changePeriod(provider.period),
-                )
-              : revenue == null
-                  ? const AppEmpty(message: 'Khong co du lieu doanh thu.')
-                  : RefreshIndicator(
-                      onRefresh: () => _changePeriod(provider.period),
-                      color: AppColors.accent,
-                      child: ListView(
-                        padding: const EdgeInsets.all(24),
-                        children: [
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: [
-                              for (final option in const ['month', 'quarter', 'year'])
-                                ChoiceChip(
-                                  label: Text(option.toUpperCase()),
-                                  selected: provider.period == option,
-                                  onSelected: (_) => _changePeriod(option),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          _RevenueHeaderCards(revenue: revenue),
-                          const SizedBox(height: 20),
-                          _RevenueTrendCard(revenue: revenue),
-                          const SizedBox(height: 20),
-                          _TopHostsCard(revenue: revenue),
-                        ],
-                      ),
-                    ),
+          ? AppEmpty(
+              message: provider.error!,
+              icon: Icons.show_chart_outlined,
+              actionLabel: 'Thu lai',
+              onAction: () => _changePeriod(provider.period),
+            )
+          : revenue == null
+          ? const AppEmpty(message: 'Khong co du lieu doanh thu.')
+          : RefreshIndicator(
+              onRefresh: () => _changePeriod(provider.period),
+              color: AppColors.accent,
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final option in const ['month', 'quarter', 'year'])
+                        ChoiceChip(
+                          label: Text(option.toUpperCase()),
+                          selected: provider.period == option,
+                          onSelected: (_) => _changePeriod(option),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _RevenueHeaderCards(revenue: revenue),
+                  const SizedBox(height: 20),
+                  _RevenueTrendCard(revenue: revenue),
+                  const SizedBox(height: 20),
+                  _TopHostsCard(revenue: revenue),
+                ],
+              ),
+            ),
     );
   }
 }
@@ -95,8 +95,16 @@ class _RevenueHeaderCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cards = [
-      ('Total revenue', CurrencyUtils.format(revenue.totalRevenue), AppColors.accent),
-      ('Average / period', CurrencyUtils.formatCompact(revenue.averageRevenue), AppColors.success),
+      (
+        'Total revenue',
+        CurrencyUtils.format(revenue.totalRevenue),
+        AppColors.accent,
+      ),
+      (
+        'Average / period',
+        CurrencyUtils.formatCompact(revenue.averageRevenue),
+        AppColors.success,
+      ),
       ('Periods', '${revenue.revenueByPeriod.length}', AppColors.info),
     ];
 
@@ -182,8 +190,9 @@ class _RevenueTrendCard extends StatelessWidget {
                         child: LinearProgressIndicator(
                           minHeight: 12,
                           value: maxValue == 0 ? 0 : entry.value / maxValue,
-                          backgroundColor:
-                              AppColors.accent.withValues(alpha: 0.12),
+                          backgroundColor: AppColors.accent.withValues(
+                            alpha: 0.12,
+                          ),
                           color: AppColors.accent,
                         ),
                       ),

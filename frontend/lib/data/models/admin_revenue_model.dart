@@ -48,9 +48,9 @@ class AdminRevenueModel {
       revenueByPeriod: periodMap,
       topHosts: rawTopHosts is List
           ? rawTopHosts
-              .whereType<Map<String, dynamic>>()
-              .map(AdminRevenueTopHostModel.fromJson)
-              .toList()
+                .whereType<Map<String, dynamic>>()
+                .map(AdminRevenueTopHostModel.fromJson)
+                .toList()
           : const [],
     );
   }

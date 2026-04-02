@@ -46,9 +46,10 @@ class _DepositListScreenState extends State<DepositListScreen> {
     );
     if (!confirm || !mounted) return;
 
-    final ok = await context
-        .read<DepositProvider>()
-        .confirmDeposit(depositId, _hostId!);
+    final ok = await context.read<DepositProvider>().confirmDeposit(
+      depositId,
+      _hostId!,
+    );
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -56,8 +57,7 @@ class _DepositListScreenState extends State<DepositListScreen> {
         content: Text(ok ? 'Xác nhận thành công' : 'Xác nhận thất bại'),
         backgroundColor: ok ? AppColors.success : AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -71,8 +71,7 @@ class _DepositListScreenState extends State<DepositListScreen> {
     );
     if (!confirm || !mounted) return;
 
-    final ok =
-    await context.read<DepositProvider>().refundDeposit(depositId);
+    final ok = await context.read<DepositProvider>().refundDeposit(depositId);
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -80,8 +79,7 @@ class _DepositListScreenState extends State<DepositListScreen> {
         content: Text(ok ? 'Hoàn cọc thành công' : 'Hoàn cọc thất bại'),
         backgroundColor: ok ? AppColors.success : AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -101,33 +99,32 @@ class _DepositListScreenState extends State<DepositListScreen> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: fg, size: 20),
           onPressed: () => context.pop(),
         ),
-        title:
-        Text('Đặt cọc', style: AppTextStyles.h3.copyWith(color: fg)),
+        title: Text('Đặt cọc', style: AppTextStyles.h3.copyWith(color: fg)),
       ),
       body: provider.loading
           ? const AppLoading()
           : provider.deposits.isEmpty
           ? const AppEmpty(
-        message: 'Chưa có đặt cọc nào',
-        icon: Icons.savings_outlined,
-      )
+              message: 'Chưa có đặt cọc nào',
+              icon: Icons.savings_outlined,
+            )
           : RefreshIndicator(
-        color: AppColors.accent,
-        onRefresh: _load,
-        child: ListView.separated(
-          padding: const EdgeInsets.all(24),
-          itemCount: provider.deposits.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (_, i) => _DepositCard(
-            deposit: provider.deposits[i],
-            isDark: isDark,
-            onConfirm: () =>
-                _confirmDeposit(provider.deposits[i].depositId),
-            onRefund: () =>
-                _refundDeposit(provider.deposits[i].depositId),
-          ),
-        ),
-      ),
+              color: AppColors.accent,
+              onRefresh: _load,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(24),
+                itemCount: provider.deposits.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (_, i) => _DepositCard(
+                  deposit: provider.deposits[i],
+                  isDark: isDark,
+                  onConfirm: () =>
+                      _confirmDeposit(provider.deposits[i].depositId),
+                  onRefund: () =>
+                      _refundDeposit(provider.deposits[i].depositId),
+                ),
+              ),
+            ),
       bottomNavigationBar: const HostBottomNav(currentIndex: 0),
     );
   }
@@ -187,8 +184,7 @@ class _DepositCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Phòng ${deposit.roomCode}',
-                      style:
-                      AppTextStyles.bodySmall.copyWith(color: subtext),
+                      style: AppTextStyles.bodySmall.copyWith(color: subtext),
                     ),
                   ],
                 ),
@@ -208,14 +204,14 @@ class _DepositCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Số tiền cọc',
-                        style: AppTextStyles.caption.copyWith(color: subtext)),
+                    Text(
+                      'Số tiền cọc',
+                      style: AppTextStyles.caption.copyWith(color: subtext),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       CurrencyUtils.format(deposit.amount),
-                      style: AppTextStyles.h3.copyWith(
-                        color: AppColors.accent,
-                      ),
+                      style: AppTextStyles.h3.copyWith(color: AppColors.accent),
                     ),
                   ],
                 ),
@@ -225,9 +221,10 @@ class _DepositCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Dự kiến vào',
-                          style: AppTextStyles.caption
-                              .copyWith(color: subtext)),
+                      Text(
+                        'Dự kiến vào',
+                        style: AppTextStyles.caption.copyWith(color: subtext),
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         AppDateUtils.formatDate(deposit.expectedCheckIn),
@@ -261,8 +258,7 @@ class _DepositCard extends StatelessWidget {
                       onTap: onConfirm,
                     ),
                   ),
-                if (deposit.status == 'PENDING')
-                  const SizedBox(width: 8),
+                if (deposit.status == 'PENDING') const SizedBox(width: 8),
                 Expanded(
                   child: _ActionBtn(
                     label: 'Hoàn cọc',

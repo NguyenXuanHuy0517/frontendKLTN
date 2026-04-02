@@ -1,4 +1,3 @@
-// Màn hình quản lý dịch vụ theo từng khu trọ của host.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -48,6 +47,14 @@ class _HostServiceManagementScreenState
     _loadAreas();
   }
 
+  AreaModel? _findAreaById(List<AreaModel> areas, int? areaId) {
+    if (areaId == null) return null;
+    for (final area in areas) {
+      if (area.areaId == areaId) return area;
+    }
+    return null;
+  }
+
   Future<void> _loadAreas() async {
     final hostId = await context.read<AuthProvider>().getUserId();
     if (!mounted) return;
@@ -71,18 +78,10 @@ class _HostServiceManagementScreenState
         (a, b) => a.areaName.toLowerCase().compareTo(b.areaName.toLowerCase()),
       );
 
-      AreaModel? selectedArea = _selectedArea;
-      if (selectedArea != null) {
-        selectedArea = areas.cast<AreaModel?>().firstWhere(
-          (item) => item?.areaId == selectedArea?.areaId,
-          orElse: () => null,
-        );
-      } else if (widget.areaId != null) {
-        selectedArea = areas.cast<AreaModel?>().firstWhere(
-          (item) => item?.areaId == widget.areaId,
-          orElse: () => null,
-        );
-      }
+      final selectedArea = _findAreaById(
+        areas,
+        _selectedArea?.areaId ?? widget.areaId,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -111,12 +110,10 @@ class _HostServiceManagementScreenState
   }
 
   Future<void> _loadServices(int areaId) async {
-    if (mounted) {
-      setState(() {
-        _loadingServices = true;
-        _serviceError = null;
-      });
-    }
+    setState(() {
+      _loadingServices = true;
+      _serviceError = null;
+    });
 
     try {
       final services = await _serviceManagement.getServices(areaId);
@@ -152,136 +149,22 @@ class _HostServiceManagementScreenState
     final area = _selectedArea;
     if (area == null) return;
 
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController(
-      text: service?.serviceName ?? '',
-    );
-    final priceController = TextEditingController(
-      text: service == null ? '' : service.price.toStringAsFixed(0),
-    );
-    final unitController = TextEditingController(
-      text: service?.unitName ?? 'Tháng',
-    );
-    final descriptionController = TextEditingController(
-      text: service?.description ?? '',
-    );
-
-    final confirmed = await showDialog<bool>(
+    final result = await showDialog<_ServiceFormResult>(
       context: context,
-      builder: (dialogContext) {
-        final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
-        final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            service == null ? 'Thêm dịch vụ' : 'Sửa dịch vụ',
-            style: AppTextStyles.h3.copyWith(color: fg),
-          ),
-          content: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Tên dịch vụ',
-                      hintText: 'Ví dụ: Giữ xe',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Nhập tên dịch vụ';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: priceController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Giá',
-                      hintText: 'Ví dụ: 100000',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Nhập giá dịch vụ';
-                      }
-                      if (double.tryParse(value.trim()) == null) {
-                        return 'Giá không hợp lệ';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: unitController,
-                    decoration: const InputDecoration(
-                      labelText: 'Đơn vị',
-                      hintText: 'Ví dụ: Tháng, Người, Xe',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Nhập đơn vị tính';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: descriptionController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Mô tả',
-                      hintText: 'Ghi chú thêm nếu cần',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (!(formKey.currentState?.validate() ?? false)) return;
-                Navigator.pop(dialogContext, true);
-              },
-              child: Text(service == null ? 'Tạo' : 'Lưu'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => _ServiceFormDialog(service: service),
     );
 
-    if (!mounted) return;
-
-    final payload = <String, dynamic>{
-      'serviceName': nameController.text.trim(),
-      'price': double.tryParse(priceController.text.trim()) ?? 0,
-      'unitName': unitController.text.trim(),
-      'description': descriptionController.text.trim(),
-    };
-
-    nameController.dispose();
-    priceController.dispose();
-    unitController.dispose();
-    descriptionController.dispose();
-
-    if (confirmed != true) return;
+    if (!mounted || result == null) return;
 
     setState(() => _saving = true);
     try {
       if (service == null) {
-        await _serviceManagement.createService(area.areaId, payload);
+        await _serviceManagement.createService(area.areaId, result.payload);
       } else {
-        await _serviceManagement.updateService(service.serviceId, payload);
+        await _serviceManagement.updateService(
+          service.serviceId,
+          result.payload,
+        );
       }
       await _loadServices(area.areaId);
       _showSnackBar(
@@ -309,10 +192,10 @@ class _HostServiceManagementScreenState
 
     final confirmed = await ConfirmDialog.show(
       context,
-      title: 'Ngưng sử dụng dịch vụ',
+      title: 'Ngừng sử dụng dịch vụ',
       message:
-          'Dịch vụ "${service.serviceName}" sẽ được chuyển sang trạng thái ngưng sử dụng. Tiếp tục?',
-      confirmLabel: 'Ngưng dùng',
+          'Dịch vụ "${service.serviceName}" sẽ được chuyển sang trạng thái ngừng sử dụng. Tiếp tục?',
+      confirmLabel: 'Ngừng dùng',
       destructive: true,
     );
     if (!confirmed || !mounted) return;
@@ -356,6 +239,7 @@ class _HostServiceManagementScreenState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final selectedArea = _selectedArea;
     final activeCount = _services.where((service) => service.active).length;
     final inactiveCount = _services.length - activeCount;
@@ -428,7 +312,8 @@ class _HostServiceManagementScreenState
                   children: [
                     if (_areas.isEmpty)
                       AppEmpty(
-                        message: 'Bạn chưa có khu trọ nào để quản lý dịch vụ.',
+                        message:
+                            'Bạn chưa có khu trọ nào để quản lý dịch vụ.',
                         icon: Icons.location_city_outlined,
                         actionLabel: 'Thêm khu trọ',
                         onAction: () => context.push('/host/areas/new'),
@@ -442,18 +327,16 @@ class _HostServiceManagementScreenState
                       Text(
                         'Mỗi khu trọ có danh mục dịch vụ riêng. Chọn một khu để xem và chỉnh sửa.',
                         style: AppTextStyles.bodySmall.copyWith(
-                          color: isDark
-                              ? AppColors.darkSubtext
-                              : AppColors.lightSubtext,
+                          color: subtext,
                         ),
                       ),
                       const SizedBox(height: 14),
                       SizedBox(
-                        height: 156,
+                        height: 180,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: _areas.length,
-                          separatorBuilder: (context, separatorIndex) =>
+                          separatorBuilder: (context, index) =>
                               const SizedBox(width: 12),
                           itemBuilder: (_, index) {
                             final area = _areas[index];
@@ -497,7 +380,7 @@ class _HostServiceManagementScreenState
                                 color: AppColors.success,
                               ),
                               _ServiceSummaryChip(
-                                label: '$inactiveCount dịch vụ ngưng dùng',
+                                label: '$inactiveCount dịch vụ ngừng dùng',
                                 icon: Icons.pause_circle_outline,
                                 color: AppColors.warning,
                               ),
@@ -556,6 +439,157 @@ class _HostServiceManagementScreenState
   }
 }
 
+class _ServiceFormResult {
+  final Map<String, dynamic> payload;
+
+  const _ServiceFormResult(this.payload);
+}
+
+class _ServiceFormDialog extends StatefulWidget {
+  final ServiceModel? service;
+
+  const _ServiceFormDialog({this.service});
+
+  @override
+  State<_ServiceFormDialog> createState() => _ServiceFormDialogState();
+}
+
+class _ServiceFormDialogState extends State<_ServiceFormDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _priceController;
+  late final TextEditingController _unitController;
+  late final TextEditingController _descriptionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(
+      text: widget.service?.serviceName ?? '',
+    );
+    _priceController = TextEditingController(
+      text: widget.service == null
+          ? ''
+          : widget.service!.price.toStringAsFixed(0),
+    );
+    _unitController = TextEditingController(
+      text: widget.service?.unitName ?? 'Tháng',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.service?.description ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    _unitController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    Navigator.of(context).pop(
+      _ServiceFormResult({
+        'serviceName': _nameController.text.trim(),
+        'price': double.tryParse(_priceController.text.trim()) ?? 0,
+        'unitName': _unitController.text.trim(),
+        'description': _descriptionController.text.trim(),
+      }),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(
+        widget.service == null ? 'Thêm dịch vụ' : 'Sửa dịch vụ',
+        style: AppTextStyles.h3.copyWith(color: fg),
+      ),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Tên dịch vụ',
+                  hintText: 'Ví dụ: Giữ xe',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nhập tên dịch vụ';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _priceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Giá',
+                  hintText: 'Ví dụ: 100000',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nhập giá dịch vụ';
+                  }
+                  if (double.tryParse(value.trim()) == null) {
+                    return 'Giá không hợp lệ';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _unitController,
+                decoration: const InputDecoration(
+                  labelText: 'Đơn vị',
+                  hintText: 'Ví dụ: Tháng, Người, Xe',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Nhập đơn vị tính';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Mô tả',
+                  hintText: 'Ghi chú thêm nếu cần',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Hủy'),
+        ),
+        TextButton(
+          onPressed: _submit,
+          child: Text(widget.service == null ? 'Tạo' : 'Lưu'),
+        ),
+      ],
+    );
+  }
+}
+
 class _AreaSelectorCard extends StatelessWidget {
   final AreaModel area;
   final bool selected;
@@ -579,7 +613,8 @@ class _AreaSelectorCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 244,
+        width: 248,
+        height: 172,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: selected
@@ -632,7 +667,7 @@ class _AreaSelectorCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.bodySmall.copyWith(color: subtext),
             ),
-            const SizedBox(height: 12),
+            const Spacer(),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -789,14 +824,14 @@ class _ServiceCard extends StatelessWidget {
                   if (value == 'edit') onEdit?.call();
                   if (value == 'delete') onDelete?.call();
                 },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
                     value: 'edit',
                     child: Text('Sửa dịch vụ'),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
-                    child: Text('Ngưng sử dụng'),
+                    child: Text('Ngừng sử dụng'),
                   ),
                 ],
               ),
@@ -817,7 +852,7 @@ class _ServiceCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  service.active ? 'Đang hoạt động' : 'Ngưng sử dụng',
+                  service.active ? 'Đang hoạt động' : 'Ngừng sử dụng',
                   style: AppTextStyles.caption.copyWith(color: statusColor),
                 ),
               ),

@@ -5,7 +5,7 @@ import '../../core/constants/api_constants.dart';
 import 'api_client.dart';
 
 class AvatarUploadService {
-  final _hostDio   = ApiClient.instance.hostDio;
+  final _hostDio = ApiClient.instance.hostDio;
   final _tenantDio = ApiClient.instance.tenantDio;
 
   /// Upload ảnh avatar lên server và nhận về URL Cloudinary.
@@ -24,7 +24,7 @@ class AvatarUploadService {
       'file': MultipartFile.fromBytes(fileBytes, filename: filename),
     });
 
-    final dio      = role == 'HOST' ? _hostDio : _tenantDio;
+    final dio = role == 'HOST' ? _hostDio : _tenantDio;
     final endpoint = role == 'HOST'
         ? '/api/host/avatar'
         : ApiConstants.tenantAvatar;
@@ -59,14 +59,11 @@ class AvatarUploadService {
 
   /// Xóa avatar — đặt lại về null.
   Future<void> remove({required int userId, required String role}) async {
-    final dio      = role == 'HOST' ? _hostDio : _tenantDio;
+    final dio = role == 'HOST' ? _hostDio : _tenantDio;
     final endpoint = role == 'HOST'
         ? '/api/host/avatar'
         : ApiConstants.tenantAvatar;
 
-    await dio.delete(
-      endpoint,
-      queryParameters: {'userId': userId},
-    );
+    await dio.delete(endpoint, queryParameters: {'userId': userId});
   }
 }

@@ -46,19 +46,15 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: AppColors.accent, width: 1.5),
       ),
-      contentPadding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding:
-        const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         textStyle: AppTextStyles.button,
       ),
     ),
@@ -67,19 +63,15 @@ class AppTheme {
       displayMedium: AppTextStyles.h2.copyWith(color: AppColors.lightFg),
       displaySmall: AppTextStyles.h3.copyWith(color: AppColors.lightFg),
       bodyLarge: AppTextStyles.body.copyWith(color: AppColors.lightFg),
-      bodyMedium:
-      AppTextStyles.bodySmall.copyWith(color: AppColors.lightSubtext),
+      bodyMedium: AppTextStyles.bodySmall.copyWith(
+        color: AppColors.lightSubtext,
+      ),
     ),
-    dividerTheme: DividerThemeData(
-      color: AppColors.lightBorder,
-      thickness: 1,
-    ),
+    dividerTheme: DividerThemeData(color: AppColors.lightBorder, thickness: 1),
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.lightBorder,
       labelStyle: AppTextStyles.caption.copyWith(color: AppColors.lightFg),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     ),
   );
 
@@ -124,19 +116,15 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: AppColors.accent, width: 1.5),
       ),
-      contentPadding:
-      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.accent,
         foregroundColor: Colors.white,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding:
-        const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         textStyle: AppTextStyles.button,
       ),
     ),
@@ -145,19 +133,15 @@ class AppTheme {
       displayMedium: AppTextStyles.h2.copyWith(color: AppColors.darkFg),
       displaySmall: AppTextStyles.h3.copyWith(color: AppColors.darkFg),
       bodyLarge: AppTextStyles.body.copyWith(color: AppColors.darkFg),
-      bodyMedium:
-      AppTextStyles.bodySmall.copyWith(color: AppColors.darkSubtext),
+      bodyMedium: AppTextStyles.bodySmall.copyWith(
+        color: AppColors.darkSubtext,
+      ),
     ),
-    dividerTheme: DividerThemeData(
-      color: AppColors.darkBorder,
-      thickness: 1,
-    ),
+    dividerTheme: DividerThemeData(color: AppColors.darkBorder, thickness: 1),
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.darkBorder,
       labelStyle: AppTextStyles.caption.copyWith(color: AppColors.darkFg),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     ),
   );
 }

@@ -13,6 +13,9 @@ class ContractModel {
   final double? elecPriceOverride;
   final double? waterPriceOverride;
   final String status;
+  final double? depositAmount;
+  final String? depositStatus;
+  final String? depositDate;
   final List<ServiceModel> contractServices;
   final List<String> serviceNames;
   final int? daysUntilExpiry;
@@ -30,6 +33,9 @@ class ContractModel {
     this.elecPriceOverride,
     this.waterPriceOverride,
     required this.status,
+    this.depositAmount,
+    this.depositStatus,
+    this.depositDate,
     required this.contractServices,
     required this.serviceNames,
     this.daysUntilExpiry,
@@ -41,6 +47,8 @@ class ContractModel {
     }
     return serviceNames;
   }
+
+  bool get hasDeposit => depositAmount != null && depositAmount! > 0;
 
   factory ContractModel.fromJson(Map<String, dynamic> json) {
     final contractServices = (json['contractServices'] as List? ?? [])
@@ -60,6 +68,9 @@ class ContractModel {
       elecPriceOverride: _toNullableDouble(json['elecPriceOverride']),
       waterPriceOverride: _toNullableDouble(json['waterPriceOverride']),
       status: json['status'] ?? 'ACTIVE',
+      depositAmount: _toNullableDouble(json['depositAmount']),
+      depositStatus: json['depositStatus'] as String?,
+      depositDate: json['depositDate'] as String?,
       contractServices: contractServices,
       serviceNames: contractServices.isNotEmpty
           ? contractServices.map((service) => service.serviceName).toList()
@@ -86,6 +97,9 @@ class ContractModel {
       elecPriceOverride: _toNullableDouble(json['elecPrice']),
       waterPriceOverride: _toNullableDouble(json['waterPrice']),
       status: json['status'] ?? 'ACTIVE',
+      depositAmount: _toNullableDouble(json['depositAmount']),
+      depositStatus: json['depositStatus'] as String?,
+      depositDate: json['depositDate'] as String?,
       contractServices: contractServices,
       serviceNames: contractServices.isNotEmpty
           ? contractServices.map((service) => service.serviceName).toList()

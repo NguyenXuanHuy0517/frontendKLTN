@@ -35,10 +35,13 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     if (ok) {
       final role = (auth.user?.role ?? '').toUpperCase();
+      final requiresRentalJoin = auth.user?.requiresRentalJoin ?? false;
       if (role == 'ADMIN') {
         context.go('/admin/dashboard');
       } else if (role == 'TENANT') {
-        context.go('/tenant/dashboard');
+        context.go(
+          requiresRentalJoin ? '/tenant/join-rental' : '/tenant/dashboard',
+        );
       } else {
         context.go('/host/dashboard');
       }
@@ -48,8 +51,9 @@ class _LoginScreenState extends State<LoginScreen> {
           content: Text(auth.error ?? 'Đăng nhập thất bại'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -187,18 +191,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: Divider(color: subtext.withOpacity(0.3)),
+                      child: Divider(color: subtext.withValues(alpha: 0.3)),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         'hoặc',
-                        style:
-                        AppTextStyles.bodySmall.copyWith(color: subtext),
+                        style: AppTextStyles.bodySmall.copyWith(color: subtext),
                       ),
                     ),
                     Expanded(
-                      child: Divider(color: subtext.withOpacity(0.3)),
+                      child: Divider(color: subtext.withValues(alpha: 0.3)),
                     ),
                   ],
                 ),
@@ -218,8 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Center(
                   child: Text(
                     'SmartRoomMS v1.0',
-                    style:
-                    AppTextStyles.caption.copyWith(color: subtext),
+                    style: AppTextStyles.caption.copyWith(color: subtext),
                   ),
                 ),
 

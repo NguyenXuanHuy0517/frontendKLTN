@@ -46,7 +46,9 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
           content: const Text('Yêu cầu reset mật khẩu đã được gửi tới email'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } else {
@@ -55,7 +57,9 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
           content: Text(auth.error ?? 'Đã có lỗi xảy ra'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }

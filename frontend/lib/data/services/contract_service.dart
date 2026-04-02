@@ -1,6 +1,7 @@
+import '../../core/constants/api_constants.dart';
+import '../models/contract_invitation_model.dart';
 import '../models/contract_model.dart';
 import 'api_client.dart';
-import '../../core/constants/api_constants.dart';
 
 class ContractService {
   final _dio = ApiClient.instance.hostDio;
@@ -25,8 +26,19 @@ class ContractService {
     return ContractModel.fromJson(res.data['data']);
   }
 
+  Future<ContractInvitationModel> createInvitation(
+    Map<String, dynamic> data,
+  ) async {
+    final res = await _dio.post(ApiConstants.contractInvitations, data: data);
+    return ContractInvitationModel.fromJson(
+      Map<String, dynamic>.from(res.data['data'] as Map),
+    );
+  }
+
   Future<ContractModel> extendContract(
-      int contractId, String newEndDate) async {
+    int contractId,
+    String newEndDate,
+  ) async {
     final res = await _dio.put(
       '${ApiConstants.contracts}/$contractId/extend',
       data: {'newEndDate': newEndDate},
@@ -42,11 +54,14 @@ class ContractService {
   }
 
   Future<void> addService(int contractId, int serviceId) async {
-    await _dio.post('${ApiConstants.contracts}/$contractId/services/$serviceId');
+    await _dio.post(
+      '${ApiConstants.contracts}/$contractId/services/$serviceId',
+    );
   }
 
   Future<void> removeService(int contractId, int serviceId) async {
     await _dio.delete(
-        '${ApiConstants.contracts}/$contractId/services/$serviceId');
+      '${ApiConstants.contracts}/$contractId/services/$serviceId',
+    );
   }
 }

@@ -10,6 +10,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/confirm_dialog.dart';
+import '../../../core/widgets/error_retry_widget.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../data/models/contract_model.dart';
 import '../../../data/models/room_model.dart';
@@ -89,11 +90,10 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
 
   List<ServiceModel> get _assignedServices {
     final contractServices = _currentContract?.contractServices ?? [];
-    return [...contractServices]
-      ..sort(
-        (a, b) =>
-            a.serviceName.toLowerCase().compareTo(b.serviceName.toLowerCase()),
-      );
+    return [...contractServices]..sort(
+      (a, b) =>
+          a.serviceName.toLowerCase().compareTo(b.serviceName.toLowerCase()),
+    );
   }
 
   List<ServiceModel> get _availableServicesToAssign {
@@ -254,7 +254,15 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-    final room = context.watch<RoomProvider>().selected;
+    final roomState = context
+        .select<RoomProvider, ({RoomModel? room, bool loading, String? error})>(
+          (provider) => (
+            room: provider.selected,
+            loading: provider.loading,
+            error: provider.error,
+          ),
+        );
+    final room = roomState.room;
 
     return Scaffold(
       backgroundColor: bg,
@@ -272,12 +280,20 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
           if (room != null)
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: AppColors.accent),
-              onPressed: () => context.push('/host/rooms/${widget.roomId}/edit'),
+              onPressed: () =>
+                  context.push('/host/rooms/${widget.roomId}/edit'),
             ),
         ],
       ),
-      body: room == null
+      body: roomState.loading && room == null
           ? const AppLoading()
+          : roomState.error != null && room == null
+          ? ErrorRetryWidget(message: roomState.error!, onRetry: _loadRoom)
+          : room == null
+          ? const AppEmpty(
+              message: 'Không tìm thấy chi tiết phòng.',
+              icon: Icons.meeting_room_outlined,
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -299,8 +315,9 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
                           width: 56,
                           height: 56,
                           decoration: BoxDecoration(
-                            color: _statusColor(room.status)
-                                .withValues(alpha: 0.15),
+                            color: _statusColor(
+                              room.status,
+                            ).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Icon(
@@ -692,8 +709,9 @@ class _RoomServiceSection extends StatelessWidget {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(
                                 Icons.delete_outline_rounded,

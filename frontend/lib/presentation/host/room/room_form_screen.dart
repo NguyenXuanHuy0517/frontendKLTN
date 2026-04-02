@@ -78,7 +78,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Da them khu tro "${createdArea.areaName}" va tu dong chon cho phong nay.',
+            'Đã thêm khu trọ "${createdArea.areaName}" và tự động chọn cho phòng này.',
           ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
@@ -259,7 +259,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    'Ban can tao khu tro truoc khi tao phong.',
+                    'Bạn cần tạo khu trọ trước khi tạo phòng.',
                     style: AppTextStyles.bodySmall.copyWith(color: subtext),
                   ),
                 ),
@@ -273,7 +273,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
                     color: AppColors.accent,
                   ),
                   label: Text(
-                    '+ Them khu tro moi',
+                    '+ Thêm khu trọ mới',
                     style: AppTextStyles.bodySmall.copyWith(
                       color: AppColors.accent,
                       fontWeight: FontWeight.w600,

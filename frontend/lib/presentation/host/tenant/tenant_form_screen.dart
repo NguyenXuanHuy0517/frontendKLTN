@@ -58,8 +58,9 @@ class _TenantFormScreenState extends State<TenantFormScreen> {
           content: const Text('Tạo người thuê thành công'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       context.pop();
@@ -69,8 +70,9 @@ class _TenantFormScreenState extends State<TenantFormScreen> {
           content: Text(provider.error ?? 'Tạo người thuê thất bại'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -108,19 +110,22 @@ class _TenantFormScreenState extends State<TenantFormScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.info.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: AppColors.info.withOpacity(0.2)),
+                  border: Border.all(color: AppColors.info.withOpacity(0.2)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline_rounded,
-                        color: AppColors.info, size: 18),
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: AppColors.info,
+                      size: 18,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         'Mật khẩu mặc định nên dùng số điện thoại để người thuê dễ nhớ',
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.info),
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.info,
+                        ),
                       ),
                     ),
                   ],

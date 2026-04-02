@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/currency_utils.dart';
+import '../../../core/utils/date_utils.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/host_bottom_nav.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../../../core/utils/currency_utils.dart';
-import '../../../core/utils/date_utils.dart';
 import '../../../data/models/contract_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/contract_provider.dart';
@@ -46,7 +47,7 @@ class _ContractListScreenState extends State<ContractListScreen>
   Future<void> _load() async {
     _hostId = await context.read<AuthProvider>().getUserId();
     if (_hostId != null && mounted) {
-      context.read<ContractProvider>().fetchContracts(_hostId!);
+      await context.read<ContractProvider>().fetchContracts(_hostId!);
     }
   }
 
@@ -54,14 +55,22 @@ class _ContractListScreenState extends State<ContractListScreen>
     var list = contracts;
     final status = _statuses[tabIndex];
     if (status.isNotEmpty) {
-      list = list.where((c) => c.status == status).toList();
+      list = list.where((contract) => contract.status == status).toList();
     }
     if (_search.isNotEmpty) {
       list = list
-          .where((c) =>
-      c.tenantName.toLowerCase().contains(_search.toLowerCase()) ||
-          c.roomCode.toLowerCase().contains(_search.toLowerCase()) ||
-          c.contractCode.toLowerCase().contains(_search.toLowerCase()))
+          .where(
+            (contract) =>
+                contract.tenantName.toLowerCase().contains(
+                  _search.toLowerCase(),
+                ) ||
+                contract.roomCode.toLowerCase().contains(
+                  _search.toLowerCase(),
+                ) ||
+                contract.contractCode.toLowerCase().contains(
+                  _search.toLowerCase(),
+                ),
+          )
           .toList();
     }
     return list;
@@ -84,8 +93,7 @@ class _ContractListScreenState extends State<ContractListScreen>
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: fg, size: 20),
           onPressed: () => context.pop(),
         ),
-        title: Text('Hợp đồng',
-            style: AppTextStyles.h3.copyWith(color: fg)),
+        title: Text('Hợp đồng', style: AppTextStyles.h3.copyWith(color: fg)),
         actions: [
           IconButton(
             icon: Icon(Icons.add_rounded, color: AppColors.accent, size: 26),
@@ -99,19 +107,21 @@ class _ContractListScreenState extends State<ContractListScreen>
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: TextField(
-                  onChanged: (v) => setState(() => _search = v),
+                  onChanged: (value) => setState(() => _search = value),
                   style: AppTextStyles.body.copyWith(color: fg),
                   decoration: InputDecoration(
-                    hintText: 'Tìm theo người thuê, phòng, mã HĐ...',
-                    hintStyle:
-                    AppTextStyles.bodySmall.copyWith(color: subtext),
-                    prefixIcon:
-                    Icon(Icons.search_rounded, color: subtext, size: 20),
+                    hintText: 'Tìm theo người thuê, phòng, mã hợp đồng...',
+                    hintStyle: AppTextStyles.bodySmall.copyWith(color: subtext),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: subtext,
+                      size: 20,
+                    ),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     filled: true,
                     fillColor:
-                    isDark ? AppColors.darkCard : AppColors.lightCard,
+                        isDark ? AppColors.darkCard : AppColors.lightCard,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide(color: border),
@@ -133,10 +143,11 @@ class _ContractListScreenState extends State<ContractListScreen>
                 unselectedLabelColor: subtext,
                 indicatorColor: AppColors.accent,
                 indicatorSize: TabBarIndicatorSize.label,
-                labelStyle: AppTextStyles.bodySmall
-                    .copyWith(fontWeight: FontWeight.w600),
+                labelStyle: AppTextStyles.bodySmall.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
                 unselectedLabelStyle: AppTextStyles.bodySmall,
-                tabs: _tabs.map((t) => Tab(text: t)).toList(),
+                tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
               ),
             ],
           ),
@@ -144,40 +155,100 @@ class _ContractListScreenState extends State<ContractListScreen>
       ),
       body: provider.loading
           ? const AppLoading()
-          : TabBarView(
-        controller: _tabCtrl,
-        children: List.generate(
-          _tabs.length,
-              (i) {
-            final list = _filtered(provider.contracts, i);
-            if (list.isEmpty) {
-              return AppEmpty(
-                message: 'Không có hợp đồng nào',
-                icon: Icons.description_outlined,
-                actionLabel: i == 0 ? 'Tạo hợp đồng' : null,
-                onAction: i == 0
-                    ? () => context.push('/host/contracts/new')
-                    : null,
-              );
-            }
-            return RefreshIndicator(
-              color: AppColors.accent,
-              onRefresh: _load,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(24),
-                itemCount: list.length,
-                separatorBuilder: (_, __) =>
-                const SizedBox(height: 12),
-                itemBuilder: (_, idx) => _ContractCard(
-                  contract: list[idx],
-                  isDark: isDark,
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+                  child: _CreateContractEntryCard(
+                    onTap: () => context.push('/host/contracts/new'),
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
-      ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabCtrl,
+                    children: List.generate(_tabs.length, (index) {
+                      final list = _filtered(provider.contracts, index);
+                      if (list.isEmpty) {
+                        return AppEmpty(
+                          message: 'Không có hợp đồng nào',
+                          icon: Icons.description_outlined,
+                          actionLabel: index == 0 ? 'Tạo hợp đồng mới' : null,
+                          onAction: index == 0
+                              ? () => context.push('/host/contracts/new')
+                              : null,
+                        );
+                      }
+                      return RefreshIndicator(
+                        color: AppColors.accent,
+                        onRefresh: _load,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                          itemCount: list.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, idx) => _ContractCard(
+                            contract: list[idx],
+                            isDark: isDark,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            ),
       bottomNavigationBar: const HostBottomNav(currentIndex: 0),
+    );
+  }
+}
+
+class _CreateContractEntryCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _CreateContractEntryCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      featured: true,
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.add_card_rounded,
+              color: AppColors.accent,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tạo hợp đồng mới',
+                  style: AppTextStyles.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Chọn phòng trống, nhập điều khoản, sau đó sinh mã thuê cho người thuê.',
+                  style: AppTextStyles.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.accent),
+        ],
+      ),
     );
   }
 }
@@ -185,6 +256,7 @@ class _ContractListScreenState extends State<ContractListScreen>
 class _ContractCard extends StatelessWidget {
   final ContractModel contract;
   final bool isDark;
+
   const _ContractCard({required this.contract, required this.isDark});
 
   @override
@@ -192,30 +264,25 @@ class _ContractCard extends StatelessWidget {
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
     final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-
-    // Tính số ngày còn lại
     final endDate = DateTime.tryParse(contract.endDate);
     final daysLeft = endDate != null
         ? endDate.difference(DateTime.now()).inDays
         : null;
-    final isExpiringSoon =
-        daysLeft != null && daysLeft <= 30 && daysLeft >= 0;
+    final isExpiringSoon = daysLeft != null && daysLeft <= 30 && daysLeft >= 0;
 
     return AppCard(
       featured: isExpiringSoon,
-      onTap: () =>
-          context.push('/host/contracts/${contract.contractId}'),
+      onTap: () => context.push('/host/contracts/${contract.contractId}'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: AppColors.accent.withOpacity(0.1),
+                  color: AppColors.accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -239,9 +306,8 @@ class _ContractCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Phòng ${contract.roomCode} — ${contract.areaName}',
-                      style:
-                      AppTextStyles.bodySmall.copyWith(color: subtext),
+                      'Phòng ${contract.roomCode} • ${contract.areaName}',
+                      style: AppTextStyles.bodySmall.copyWith(color: subtext),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -250,12 +316,9 @@ class _ContractCard extends StatelessWidget {
               StatusBadge(status: contract.status),
             ],
           ),
-
           const SizedBox(height: 16),
           Divider(color: border, height: 1),
           const SizedBox(height: 16),
-
-          // Info row
           Row(
             children: [
               Expanded(
@@ -276,23 +339,33 @@ class _ContractCard extends StatelessWidget {
               ),
             ],
           ),
-
-          // Expiring soon warning
+          if (contract.hasDeposit) ...[
+            const SizedBox(height: 10),
+            _InfoChip(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'Cọc ${CurrencyUtils.format(contract.depositAmount!)}',
+              color: AppColors.info,
+              subtext: subtext,
+            ),
+          ],
           if (isExpiringSoon) ...[
             const SizedBox(height: 12),
             Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.1),
+                color: AppColors.warning.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: AppColors.warning.withOpacity(0.3)),
+                  color: AppColors.warning.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      size: 16, color: AppColors.warning),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Còn $daysLeft ngày hết hạn',

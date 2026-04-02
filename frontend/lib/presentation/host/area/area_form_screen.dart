@@ -37,7 +37,7 @@ class _AreaFormScreenState extends State<AreaFormScreen> {
   void _prefill() {
     final areas = context.read<AreaProvider>().areas;
     final area = areas.firstWhere(
-          (a) => a.areaId == widget.areaId,
+      (a) => a.areaId == widget.areaId,
       orElse: () => AreaModel(
         areaId: 0,
         areaName: '',
@@ -96,10 +96,14 @@ class _AreaFormScreenState extends State<AreaFormScreen> {
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEdit ? 'Cập nhật thành công' : 'Tạo khu trọ thành công'),
+          content: Text(
+            _isEdit ? 'Cập nhật thành công' : 'Tạo khu trọ thành công',
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       Navigator.of(context).pop();
@@ -109,7 +113,9 @@ class _AreaFormScreenState extends State<AreaFormScreen> {
           content: Text(provider.error ?? 'Thao tác thất bại'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }

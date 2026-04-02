@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 // Màn hình hộp thư và trung tâm gửi thông báo dành cho host.
@@ -12,7 +14,10 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_loading.dart';
+import '../../../core/widgets/error_retry_widget.dart';
 import '../../../core/widgets/host_bottom_nav.dart';
+import '../../../core/widgets/list_search_field.dart';
+import '../../../core/widgets/paged_load_more.dart';
 import '../../../data/models/contract_model.dart';
 import '../../../data/models/invoice_model.dart';
 import '../../../data/models/notification_model.dart';
@@ -22,6 +27,7 @@ import '../../../data/services/host_notification_service.dart';
 import '../../../data/services/invoice_service.dart';
 import '../../../data/services/tenant_service.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/host_notification_list_provider.dart';
 import '../../../providers/notification_badge_provider.dart';
 
 enum HostNotificationScreenMode { inbox, sendCenter }
@@ -47,21 +53,25 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
 
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
-  final _readingIds = <int>{};
+  final _searchController = TextEditingController();
   final _sendingKeys = <String>{};
   final _sentQuickKeys = <String>{};
+  final _readFilters = const [
+    _ReadFilterOption(label: 'Tat ca', value: null),
+    _ReadFilterOption(label: 'Chua doc', value: false),
+    _ReadFilterOption(label: 'Da doc', value: true),
+  ];
 
   late final TabController _tabController;
+  Timer? _searchDebounce;
 
   int? _hostId;
   bool _loading = true;
   bool _sendingManual = false;
-  bool _markingAllRead = false;
   bool _sendingAllInvoices = false;
   bool _sendingAllContracts = false;
   String? _error;
 
-  List<NotificationModel> _notifications = [];
   List<TenantModel> _tenants = [];
   List<InvoiceModel> _overdueInvoices = [];
   List<ContractModel> _expiringContracts = [];
@@ -111,6 +121,8 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
     _tabController.dispose();
     _titleController.dispose();
     _bodyController.dispose();
+    _searchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
@@ -151,17 +163,21 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
         .toList();
   }
 
-  int get _unreadCount => _notifications.where((item) => !item.isRead).length;
-
   void _syncUnreadBadge([int? count]) {
     if (!mounted) return;
     context.read<NotificationBadgeProvider>().setHostUnreadCount(
-      count ?? _unreadCount,
+      count ??
+          (_isInboxMode
+              ? context.read<HostNotificationListProvider>().unreadCount
+              : 0),
     );
   }
 
   Future<void> _load() async {
-    final hostId = await context.read<AuthProvider>().getUserId();
+    final authProvider = context.read<AuthProvider>();
+    final notificationListProvider = context
+        .read<HostNotificationListProvider>();
+    final hostId = await authProvider.getUserId();
     if (hostId == null) {
       if (!mounted) return;
       setState(() {
@@ -180,29 +196,31 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
     }
 
     try {
-      final results = await Future.wait<dynamic>([
-        _notificationService.getNotifications(hostId),
-        _tenantService.getTenants(hostId),
-        _invoiceService.getOverdueInvoices(hostId),
-        _contractService.getContracts(hostId),
-      ]);
+      if (_isInboxMode) {
+        _searchController.text = notificationListProvider.search;
+        await notificationListProvider.bootstrap(userId: hostId);
+        _syncUnreadBadge(notificationListProvider.unreadCount);
+        return;
+      } else {
+        final results = await Future.wait<dynamic>([
+          _tenantService.getTenants(hostId),
+          _invoiceService.getOverdueInvoices(hostId),
+          _contractService.getContracts(hostId),
+        ]);
 
-      final notifications = (results[0] as List<NotificationModel>)
-        ..sort(_compareNotifications);
-      final tenants = results[1] as List<TenantModel>;
-      final overdueInvoices = results[2] as List<InvoiceModel>;
-      final expiringContracts = _filterExpiringContracts(
-        results[3] as List<ContractModel>,
-      );
+        final tenants = results[0] as List<TenantModel>;
+        final overdueInvoices = results[1] as List<InvoiceModel>;
+        final expiringContracts = _filterExpiringContracts(
+          results[2] as List<ContractModel>,
+        );
 
-      if (!mounted) return;
-      setState(() {
-        _notifications = notifications;
-        _tenants = tenants;
-        _overdueInvoices = overdueInvoices;
-        _expiringContracts = expiringContracts;
-      });
-      _syncUnreadBadge(notifications.where((item) => !item.isRead).length);
+        if (!mounted) return;
+        setState(() {
+          _tenants = tenants;
+          _overdueInvoices = overdueInvoices;
+          _expiringContracts = expiringContracts;
+        });
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -212,6 +230,15 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
       if (mounted) {
         setState(() => _loading = false);
       }
+    }
+  }
+
+  Future<void> _loadMoreNotifications() async {
+    try {
+      await context.read<HostNotificationListProvider>().loadMore();
+    } catch (_) {
+      if (!mounted) return;
+      _showSnackBar('Khong the tai them thong bao.', isError: true);
     }
   }
 
@@ -236,15 +263,6 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
     });
 
     return filtered;
-  }
-
-  int _compareNotifications(NotificationModel a, NotificationModel b) {
-    final aTime = DateTime.tryParse(a.createdAt ?? '');
-    final bTime = DateTime.tryParse(b.createdAt ?? '');
-    if (aTime == null && bTime == null) return 0;
-    if (aTime == null) return 1;
-    if (bTime == null) return -1;
-    return bTime.compareTo(aTime);
   }
 
   int? _daysUntil(String? date) {
@@ -298,51 +316,24 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
   }
 
   Future<void> _markAllRead() async {
-    if (_hostId == null || _markingAllRead || _unreadCount == 0) return;
-
-    setState(() => _markingAllRead = true);
     try {
-      await _notificationService.markAllAsRead(_hostId!);
-      if (!mounted) return;
-      setState(() {
-        _notifications = _notifications
-            .map((item) => item.copyWith(isRead: true))
-            .toList();
-      });
-      _syncUnreadBadge(0);
+      await context.read<HostNotificationListProvider>().markAllAsRead();
+      _syncUnreadBadge();
     } catch (_) {
       _showSnackBar('Không thể đánh dấu tất cả là đã đọc.', isError: true);
-    } finally {
-      if (mounted) {
-        setState(() => _markingAllRead = false);
-      }
     }
   }
 
   Future<void> _openNotification(NotificationModel notification) async {
     final router = GoRouter.of(context);
-    if (!notification.isRead &&
-        !_readingIds.contains(notification.notificationId)) {
-      setState(() => _readingIds.add(notification.notificationId));
+    if (!notification.isRead) {
       try {
-        await _notificationService.markAsRead(notification.notificationId);
-        if (mounted) {
-          setState(() {
-            _notifications = _notifications.map((item) {
-              if (item.notificationId != notification.notificationId) {
-                return item;
-              }
-              return item.copyWith(isRead: true);
-            }).toList();
-          });
-          _syncUnreadBadge();
-        }
+        await context.read<HostNotificationListProvider>().markAsRead(
+          notification.notificationId,
+        );
+        _syncUnreadBadge();
       } catch (_) {
         _showSnackBar('Không cập nhật trạng thái đã đọc được.', isError: true);
-      } finally {
-        if (mounted) {
-          setState(() => _readingIds.remove(notification.notificationId));
-        }
       }
     }
 
@@ -594,6 +585,17 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
         'Vui lòng liên hệ chủ trọ nếu cần gia hạn hoặc trao đổi thêm.';
   }
 
+  void _onInboxSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 300),
+      () => context.read<HostNotificationListProvider>().applyFilters(
+        isRead: context.read<HostNotificationListProvider>().isRead,
+        search: value,
+      ),
+    );
+  }
+
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -686,6 +688,16 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
     final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+    final unreadCount = _isInboxMode
+        ? context.select<HostNotificationListProvider, int>(
+            (provider) => provider.unreadCount,
+          )
+        : 0;
+    final markingAllRead = _isInboxMode
+        ? context.select<HostNotificationListProvider, bool>(
+            (provider) => provider.markingAllRead,
+          )
+        : false;
 
     return Scaffold(
       backgroundColor: bg,
@@ -703,7 +715,7 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
         ),
         title: Text(
           _isInboxMode
-              ? 'Hộp thư thông báo${_unreadCount > 0 ? ' ($_unreadCount)' : ''}'
+              ? 'Hộp thư thông báo${unreadCount > 0 ? ' ($unreadCount)' : ''}'
               : 'Trung tâm gửi thông báo',
           style: AppTextStyles.h3.copyWith(color: fg),
         ),
@@ -726,11 +738,11 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
               color: AppColors.accent,
             ),
           ),
-          if (_isInboxMode && _unreadCount > 0)
+          if (_isInboxMode && unreadCount > 0)
             TextButton(
-              onPressed: _markingAllRead ? null : _markAllRead,
+              onPressed: markingAllRead ? null : _markAllRead,
               child: Text(
-                _markingAllRead ? 'Đang xử lý...' : 'Đọc hết',
+                markingAllRead ? 'Đang xử lý...' : 'Đọc hết',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.accent,
                   fontWeight: FontWeight.w600,
@@ -749,17 +761,12 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
               )
             : null,
       ),
-      body: _loading
+      body: _isInboxMode
+          ? _buildInboxBody()
+          : _loading
           ? const AppLoading()
           : _error != null
-          ? AppEmpty(
-              message: _error!,
-              icon: Icons.wifi_off_rounded,
-              actionLabel: 'Thử lại',
-              onAction: _load,
-            )
-          : _isInboxMode
-          ? _buildInboxTab()
+          ? ErrorRetryWidget(message: _error!, onRetry: _load)
           : TabBarView(
               controller: _tabController,
               children: [_buildComposeTab(), _buildQuickSendTab()],
@@ -768,57 +775,84 @@ class _HostNotificationScreenState extends State<HostNotificationScreen>
     );
   }
 
-  Widget _buildInboxTab() {
+  Widget _buildInboxBody() {
+    return _HostNotificationInboxBody(
+      hostId: _hostId,
+      error: _error,
+      searchController: _searchController,
+      readFilters: _readFilters,
+      onRetryLoad: _load,
+      onSearchChanged: _onInboxSearchChanged,
+      onRefreshInbox: () async {
+        await context.read<HostNotificationListProvider>().refresh();
+        _syncUnreadBadge();
+      },
+      onLoadMoreNotifications: _loadMoreNotifications,
+      onOpenNotification: _openNotification,
+      colorForType: _colorForType,
+      iconForType: _iconForType,
+      labelForType: _labelForType,
+      buildInboxTab: _buildInboxTab,
+    );
+  }
+
+  Widget _buildInboxTab(HostNotificationListProvider provider) {
+    final state = provider.state;
+
     return RefreshIndicator(
       color: AppColors.accent,
-      onRefresh: _load,
+      onRefresh: () async {
+        await context.read<HostNotificationListProvider>().refresh();
+        _syncUnreadBadge();
+      },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24),
         children: [
-          AppCard(
-            featured: _unreadCount > 0,
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _MetricChip(
-                  icon: Icons.notifications_active_outlined,
-                  color: AppColors.accent,
-                  label: 'Tổng ${_notifications.length} thông báo',
-                ),
-                _MetricChip(
-                  icon: Icons.mark_email_unread_outlined,
-                  color: AppColors.warning,
-                  label: '$_unreadCount chưa đọc',
-                ),
-                _MetricChip(
-                  icon: Icons.people_outline_rounded,
-                  color: AppColors.success,
-                  label: '${_activeTenants.length} người thuê đang ở',
-                ),
-              ],
-            ),
+          _InboxSummarySection(
+            totalItems: state.totalItems,
+            unreadCount: provider.unreadCount,
           ),
           const SizedBox(height: 16),
-          if (_notifications.isEmpty)
+          _InboxFiltersSection(
+            controller: _searchController,
+            readFilters: _readFilters,
+            selectedRead: provider.isRead,
+            onSearchChanged: _onInboxSearchChanged,
+            onReadFilterChanged: (value) {
+              context.read<HostNotificationListProvider>().applyFilters(
+                isRead: value,
+                search: _searchController.text,
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          if (state.items.isEmpty)
             const AppEmpty(
               message: 'Chưa có thông báo nào.',
               icon: Icons.notifications_outlined,
             )
           else
-            ..._notifications.map(
+            ...state.items.map(
               (notification) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _NotificationCard(
                   notification: notification,
                   color: _colorForType(notification.type),
                   icon: _iconForType(notification.type),
-                  isReading: _readingIds.contains(notification.notificationId),
+                  isReading: provider.readingIds.contains(
+                    notification.notificationId,
+                  ),
                   typeLabel: _labelForType(notification.type),
                   onTap: () => _openNotification(notification),
                 ),
               ),
+            ),
+          if (state.hasNext || state.loadingMore)
+            PagedLoadMore(
+              loading: state.loadingMore,
+              hasNext: state.hasNext,
+              onPressed: _loadMoreNotifications,
             ),
         ],
       ),
@@ -1260,6 +1294,13 @@ class _NotificationTypeOption {
   const _NotificationTypeOption({required this.value, required this.label});
 }
 
+class _ReadFilterOption {
+  final String label;
+  final bool? value;
+
+  const _ReadFilterOption({required this.label, required this.value});
+}
+
 class _QuickInvoiceReminder {
   final InvoiceModel invoice;
   final TenantModel? tenant;
@@ -1319,6 +1360,147 @@ class _MetricChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HostNotificationInboxBody extends StatelessWidget {
+  final int? hostId;
+  final String? error;
+  final TextEditingController searchController;
+  final List<_ReadFilterOption> readFilters;
+  final Future<void> Function() onRetryLoad;
+  final ValueChanged<String> onSearchChanged;
+  final Future<void> Function() onRefreshInbox;
+  final Future<void> Function() onLoadMoreNotifications;
+  final Future<void> Function(NotificationModel notification)
+  onOpenNotification;
+  final Color Function(String type) colorForType;
+  final IconData Function(String type) iconForType;
+  final String Function(String type) labelForType;
+  final Widget Function(HostNotificationListProvider provider) buildInboxTab;
+
+  const _HostNotificationInboxBody({
+    required this.hostId,
+    required this.error,
+    required this.searchController,
+    required this.readFilters,
+    required this.onRetryLoad,
+    required this.onSearchChanged,
+    required this.onRefreshInbox,
+    required this.onLoadMoreNotifications,
+    required this.onOpenNotification,
+    required this.colorForType,
+    required this.iconForType,
+    required this.labelForType,
+    required this.buildInboxTab,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (hostId == null && error == null) {
+      return const AppLoading();
+    }
+
+    if (error != null) {
+      return ErrorRetryWidget(message: error!, onRetry: onRetryLoad);
+    }
+
+    final provider = context.watch<HostNotificationListProvider>();
+    final state = provider.state;
+
+    if (state.loading) {
+      return const AppLoading();
+    }
+
+    if (state.error != null) {
+      return ErrorRetryWidget(
+        message: state.error!,
+        onRetry: () => context.read<HostNotificationListProvider>().refresh(),
+      );
+    }
+
+    return buildInboxTab(provider);
+  }
+}
+
+class _InboxSummarySection extends StatelessWidget {
+  final int totalItems;
+  final int unreadCount;
+
+  const _InboxSummarySection({
+    required this.totalItems,
+    required this.unreadCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      featured: unreadCount > 0,
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          _MetricChip(
+            icon: Icons.notifications_active_outlined,
+            color: AppColors.accent,
+            label: 'Tong $totalItems thong bao',
+          ),
+          _MetricChip(
+            icon: Icons.mark_email_unread_outlined,
+            color: AppColors.warning,
+            label: '$unreadCount chua doc',
+          ),
+          _MetricChip(
+            icon: Icons.mark_email_read_outlined,
+            color: AppColors.success,
+            label: '${(totalItems - unreadCount).clamp(0, totalItems)} da doc',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InboxFiltersSection extends StatelessWidget {
+  final TextEditingController controller;
+  final List<_ReadFilterOption> readFilters;
+  final bool? selectedRead;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<bool?> onReadFilterChanged;
+
+  const _InboxFiltersSection({
+    required this.controller,
+    required this.readFilters,
+    required this.selectedRead,
+    required this.onSearchChanged,
+    required this.onReadFilterChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ListSearchField(
+          controller: controller,
+          hintText: 'Tìm trong thông báo...',
+          onChanged: onSearchChanged,
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: readFilters
+              .map(
+                (filter) => ChoiceChip(
+                  label: Text(filter.label),
+                  selected: selectedRead == filter.value,
+                  onSelected: (_) => onReadFilterChanged(filter.value),
+                ),
+              )
+              .toList(),
+        ),
+      ],
     );
   }
 }

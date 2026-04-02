@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/constants/storage_keys.dart';
+import '../../../core/session/session_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/currency_utils.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/app_empty.dart';
 import '../../../core/widgets/app_loading.dart';
 import '../../../core/widgets/app_popup_window.dart';
 import '../../../core/widgets/dashboard_clock_card.dart';
+import '../../../core/widgets/error_retry_widget.dart';
 import '../../../core/widgets/gradient_text.dart';
 import '../../../core/widgets/notification_badge.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../core/widgets/tenant_bottom_nav.dart';
 import '../../../data/models/contract_model.dart';
+import '../../../data/models/tenant_dashboard_summary_model.dart';
 import '../../../providers/auth_provider.dart';
-import '../../../providers/contract_provider.dart';
-import '../../../providers/invoice_provider.dart';
-import '../../../providers/issue_provider.dart';
 import '../../../providers/notification_badge_provider.dart';
+import '../../../providers/tenant_dashboard_provider.dart';
 import '../../../providers/theme_provider.dart';
 import '../profile/tenant_profile_screen.dart';
 
@@ -48,7 +46,7 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
     final userId = await auth.getUserId();
     final fullName = auth.user?.fullName.trim().isNotEmpty == true
         ? auth.user!.fullName.trim()
-        : (await _readCachedFullName()).trim();
+        : (SessionStore.instance.fullName ?? '').trim();
 
     if (!mounted) return;
     setState(() {
@@ -58,17 +56,14 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
 
     if (userId == null) return;
 
-    await Future.wait([
-      context.read<ContractProvider>().fetchContractsByTenant(userId),
-      context.read<InvoiceProvider>().fetchInvoicesByTenant(userId),
-      context.read<IssueProvider>().fetchIssuesByTenant(userId),
-      context.read<NotificationBadgeProvider>().refreshTenant(userId),
-    ]);
-  }
-
-  Future<String> _readCachedFullName() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(StorageKeys.fullName) ?? '';
+    await context.read<TenantDashboardProvider>().fetchSummary(userId);
+    if (!mounted) return;
+    final summary = context.read<TenantDashboardProvider>().summary;
+    if (summary != null) {
+      context.read<NotificationBadgeProvider>().setTenantUnreadCount(
+        summary.unreadCount,
+      );
+    }
   }
 
   Future<void> _openProfilePopup() async {
@@ -86,22 +81,25 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
     final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-
-    final contractProvider = context.watch<ContractProvider>();
-    final invoiceProvider = context.watch<InvoiceProvider>();
-    final issueProvider = context.watch<IssueProvider>();
-    final unreadCount = context.watch<NotificationBadgeProvider>().tenantUnreadCount;
-
-    final isLoading = contractProvider.loading ||
-        invoiceProvider.loading ||
-        issueProvider.loading;
-    final error =
-        contractProvider.error ?? invoiceProvider.error ?? issueProvider.error;
-
-    final currentContract = contractProvider.currentContract;
-    final unpaidCount = invoiceProvider.unpaidInvoices.length;
-    final overdueCount = invoiceProvider.overdueInvoices.length;
-    final openIssueCount = issueProvider.openIssues.length;
+    final dashboard = context
+        .select<
+          TenantDashboardProvider,
+          ({TenantDashboardSummaryModel? summary, bool loading, String? error})
+        >(
+          (provider) => (
+            summary: provider.summary,
+            loading: provider.loading,
+            error: provider.error,
+          ),
+        );
+    final summary = dashboard.summary;
+    final unreadCount = context.select<NotificationBadgeProvider, int>(
+      (provider) => provider.tenantUnreadCount,
+    );
+    final currentContract = summary?.currentContract;
+    final unpaidCount = summary?.unpaidCount ?? 0;
+    final overdueCount = summary?.overdueCount ?? 0;
+    final openIssueCount = summary?.openIssueCount ?? 0;
 
     return Scaffold(
       backgroundColor: bg,
@@ -112,70 +110,12 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: AppColors.gradient,
-                          ),
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: const Icon(
-                          Icons.home_work_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      GradientText(
-                        'SmartRoom',
-                        style: AppTextStyles.h3,
-                        colors: AppColors.gradient,
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(
-                          isDark
-                              ? Icons.light_mode_outlined
-                              : Icons.dark_mode_outlined,
-                          color: subtext,
-                          size: 22,
-                        ),
-                        onPressed: () =>
-                            context.read<ThemeProvider>().toggleTheme(),
-                      ),
-                      IconButton(
-                        icon: NotificationBadge(
-                          showBadge: unreadCount > 0,
-                          child: Icon(
-                            Icons.notifications_outlined,
-                            color: subtext,
-                            size: 22,
-                          ),
-                        ),
-                        onPressed: () async {
-                          final badgeProvider =
-                              context.read<NotificationBadgeProvider>();
-                          await context.push('/tenant/notifications');
-                          if (!mounted || _userId == null) return;
-                          await badgeProvider.refreshTenant(_userId!);
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.person_outline_rounded,
-                          color: subtext,
-                          size: 22,
-                        ),
-                        onPressed: _openProfilePopup,
-                      ),
-                    ],
-                  ),
+                child: _TenantDashboardTopBar(
+                  isDark: isDark,
+                  subtext: subtext,
+                  unreadCount: unreadCount,
+                  userId: _userId,
+                  onProfileTap: _openProfilePopup,
                 ),
               ),
               SliverToBoxAdapter(
@@ -204,23 +144,17 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
                   ),
                 ),
               ),
-              if (isLoading)
+              if (dashboard.loading)
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: AppLoading(),
                 )
-              else if (error != null &&
-                  currentContract == null &&
-                  unpaidCount == 0 &&
-                  overdueCount == 0 &&
-                  openIssueCount == 0)
+              else if (dashboard.error != null && summary == null)
                 SliverFillRemaining(
                   hasScrollBody: false,
-                  child: AppEmpty(
-                    message: error,
-                    icon: Icons.wifi_off_rounded,
-                    actionLabel: 'Thử lại',
-                    onAction: _load,
+                  child: ErrorRetryWidget(
+                    message: dashboard.error!,
+                    onRetry: _load,
                   ),
                 )
               else
@@ -298,6 +232,82 @@ class _TenantDashboardScreenState extends State<TenantDashboardScreen> {
         ),
       ),
       bottomNavigationBar: const TenantBottomNav(currentIndex: 0),
+    );
+  }
+}
+
+class _TenantDashboardTopBar extends StatelessWidget {
+  final bool isDark;
+  final Color subtext;
+  final int unreadCount;
+  final int? userId;
+  final Future<void> Function() onProfileTap;
+
+  const _TenantDashboardTopBar({
+    required this.isDark,
+    required this.subtext,
+    required this.unreadCount,
+    required this.userId,
+    required this.onProfileTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: AppColors.gradient),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.home_work_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          GradientText(
+            'SmartRoom',
+            style: AppTextStyles.h3,
+            colors: AppColors.gradient,
+          ),
+          const Spacer(),
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              color: subtext,
+              size: 22,
+            ),
+            onPressed: () => context.read<ThemeProvider>().toggleTheme(),
+          ),
+          IconButton(
+            icon: NotificationBadge(
+              showBadge: unreadCount > 0,
+              child: Icon(
+                Icons.notifications_outlined,
+                color: subtext,
+                size: 22,
+              ),
+            ),
+            onPressed: () async {
+              await context.push('/tenant/notifications');
+              if (!context.mounted || userId == null) return;
+              await context.read<NotificationBadgeProvider>().refreshTenant(
+                userId!,
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.person_outline_rounded, color: subtext, size: 22),
+            onPressed: onProfileTap,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -552,7 +562,11 @@ class _QuickActions extends StatelessWidget {
     _Action(Icons.receipt_long_outlined, 'Hóa đơn', '/tenant/invoices'),
     _Action(Icons.description_outlined, 'Hợp đồng', '/tenant/contract'),
     _Action(Icons.report_outlined, 'Khiếu nại', '/tenant/issues'),
-    _Action(Icons.miscellaneous_services_outlined, 'Dịch vụ', '/tenant/services'),
+    _Action(
+      Icons.miscellaneous_services_outlined,
+      'Dịch vụ',
+      '/tenant/services',
+    ),
     _Action(Icons.notifications_outlined, 'Thông báo', '/tenant/notifications'),
     _Action(Icons.person_outline_rounded, 'Hồ sơ', '/tenant/profile'),
   ];
@@ -561,57 +575,73 @@ class _QuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    const spacing = 12.0;
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1,
-      ),
-      itemCount: _actions.length,
-      itemBuilder: (context, index) {
-        final action = _actions[index];
-        final isNotification = action.route == '/tenant/notifications';
-        final isProfile = action.route == '/tenant/profile';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final crossAxisCount = width >= 720
+            ? 4
+            : width >= 440
+            ? 3
+            : 2;
+        final itemWidth =
+            (width - spacing * (crossAxisCount - 1)) / crossAxisCount;
 
-        return AppCard(
-          onTap: () async {
-            if (isProfile) {
-              await onProfileTap();
-              return;
-            }
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: _actions.map((action) {
+            final isNotification = action.route == '/tenant/notifications';
+            final isProfile = action.route == '/tenant/profile';
 
-            await context.push(action.route);
-            if (!context.mounted || !isNotification) return;
-            await onNotificationVisited();
-          },
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              NotificationBadge(
-                showBadge: isNotification && unreadCount > 0,
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+            return SizedBox(
+              width: itemWidth,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: AppCard(
+                  onTap: () async {
+                    if (isProfile) {
+                      await onProfileTap();
+                      return;
+                    }
+
+                    await context.push(action.route);
+                    if (!context.mounted || !isNotification) return;
+                    await onNotificationVisited();
+                  },
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      NotificationBadge(
+                        showBadge: isNotification && unreadCount > 0,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            action.icon,
+                            color: AppColors.accent,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        action.label,
+                        style: AppTextStyles.caption.copyWith(color: fg),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                  child: Icon(action.icon, color: AppColors.accent, size: 22),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                action.label,
-                style: AppTextStyles.caption.copyWith(color: fg),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+            );
+          }).toList(),
         );
       },
     );

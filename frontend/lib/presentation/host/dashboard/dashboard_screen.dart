@@ -2,9 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import '../../../core/constants/storage_keys.dart';
+import '../../../core/session/session_store.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/currency_utils.dart';
@@ -48,7 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final hostId = await auth.getUserId();
     final fullName = auth.user?.fullName.trim().isNotEmpty == true
         ? auth.user!.fullName.trim()
-        : (await _readCachedFullName()).trim();
+        : (SessionStore.instance.fullName ?? '').trim();
 
     if (!mounted) return;
     setState(() {
@@ -64,22 +62,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
   }
 
-  Future<String> _readCachedFullName() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(StorageKeys.fullName) ?? '';
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-    final reportProvider = context.watch<ReportProvider>();
-    final unreadCount = context
-        .watch<NotificationBadgeProvider>()
-        .hostUnreadCount;
-
+    final dashboard = context
+        .select<
+          ReportProvider,
+          ({bool loading, String? error, ReportModel? report})
+        >(
+          (provider) => (
+            loading: provider.loading,
+            error: provider.error,
+            report: provider.report,
+          ),
+        );
     return Scaffold(
       backgroundColor: bg,
       body: SafeArea(
@@ -89,72 +88,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: AppColors.gradient,
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: const Icon(
-                          Icons.home_work_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      GradientText(
-                        'SmartRoom',
-                        style: AppTextStyles.h3,
-                        colors: AppColors.gradient,
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(
-                          isDark
-                              ? Icons.light_mode_outlined
-                              : Icons.dark_mode_outlined,
-                          color: subtext,
-                          size: 22,
-                        ),
-                        onPressed: () =>
-                            context.read<ThemeProvider>().toggleTheme(),
-                      ),
-                      IconButton(
-                        icon: NotificationBadge(
-                          showBadge: unreadCount > 0,
-                          child: Icon(
-                            Icons.notifications_outlined,
-                            color: subtext,
-                            size: 22,
-                          ),
-                        ),
-                        onPressed: () async {
-                          final badgeProvider = context
-                              .read<NotificationBadgeProvider>();
-                          await context.push('/host/notifications');
-                          if (!mounted || _hostId == null) return;
-                          await badgeProvider.refreshHost(_hostId!);
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          Icons.person_outline_rounded,
-                          color: subtext,
-                          size: 22,
-                        ),
-                        onPressed: () => ProfileBottomSheet.show(context),
-                      ),
-                    ],
-                  ),
+                child: _DashboardTopBar(
+                  isDark: isDark,
+                  subtext: subtext,
+                  hostId: _hostId,
                 ),
               ),
               SliverToBoxAdapter(
@@ -183,22 +120,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
               ),
-              if (reportProvider.loading)
+              if (dashboard.loading)
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: AppLoading(),
                 )
-              else if (reportProvider.error != null)
+              else if (dashboard.error != null)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: AppEmpty(
-                    message: reportProvider.error!,
+                    message: dashboard.error!,
                     icon: Icons.wifi_off_rounded,
                     actionLabel: 'Thử lại',
                     onAction: _load,
                   ),
                 )
-              else if (reportProvider.report == null)
+              else if (dashboard.report == null)
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: AppEmpty(
@@ -207,12 +144,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 )
               else
                 SliverToBoxAdapter(
-                  child: _buildBody(
-                    context,
-                    reportProvider.report!,
-                    isDark,
-                    fg,
-                    subtext,
+                  child: _HostDashboardSections(
+                    report: dashboard.report!,
+                    isDark: isDark,
+                    fg: fg,
+                    subtext: subtext,
+                    onReload: _load,
                   ),
                 ),
             ],
@@ -222,14 +159,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: const HostBottomNav(currentIndex: 0),
     );
   }
+}
 
-  Widget _buildBody(
-    BuildContext context,
-    ReportModel report,
-    bool isDark,
-    Color fg,
-    Color subtext,
-  ) {
+class _HostDashboardSections extends StatelessWidget {
+  final ReportModel report;
+  final bool isDark;
+  final Color fg;
+  final Color subtext;
+  final Future<void> Function()? onReload;
+
+  const _HostDashboardSections({
+    required this.report,
+    required this.isDark,
+    required this.fg,
+    required this.subtext,
+    this.onReload,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -241,14 +189,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Expanded(flex: 8, child: _RevenueCard(report: report)),
               const SizedBox(width: 12),
-              const Expanded(
-                flex: 5,
-                child: DashboardClockCard(compact: true),
-              ),
+              const Expanded(flex: 5, child: DashboardClockCard(compact: true)),
             ],
           ),
           const SizedBox(height: 20),
-          Text('Tình trạng phòng', style: AppTextStyles.h3.copyWith(color: fg)),
+          Text(
+            'Tình trạng phòng',
+            style: AppTextStyles.h3.copyWith(color: fg),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -330,12 +278,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
           Text('Tạo nhanh', style: AppTextStyles.h3.copyWith(color: fg)),
           const SizedBox(height: 12),
-          _CreateQuickActions(onComplete: _load),
+          _CreateQuickActions(onComplete: onReload),
           const SizedBox(height: 20),
           Text('Truy cập nhanh', style: AppTextStyles.h3.copyWith(color: fg)),
           const SizedBox(height: 12),
           const _QuickActions(),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardTopBar extends StatelessWidget {
+  final bool isDark;
+  final Color subtext;
+  final int? hostId;
+
+  const _DashboardTopBar({
+    required this.isDark,
+    required this.subtext,
+    required this.hostId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final unreadCount = context.select<NotificationBadgeProvider, int>(
+      (provider) => provider.hostUnreadCount,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: AppColors.gradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Icon(
+              Icons.home_work_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 10),
+          GradientText(
+            'SmartRoom',
+            style: AppTextStyles.h3,
+            colors: AppColors.gradient,
+          ),
+          const Spacer(),
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              color: subtext,
+              size: 22,
+            ),
+            onPressed: () => context.read<ThemeProvider>().toggleTheme(),
+          ),
+          IconButton(
+            icon: NotificationBadge(
+              showBadge: unreadCount > 0,
+              child: Icon(
+                Icons.notifications_outlined,
+                color: subtext,
+                size: 22,
+              ),
+            ),
+            onPressed: () async {
+              final badgeProvider = context.read<NotificationBadgeProvider>();
+              await context.push('/host/notifications');
+              if (!context.mounted || hostId == null) return;
+              await badgeProvider.refreshHost(hostId!);
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.person_outline_rounded, color: subtext, size: 22),
+            onPressed: () => ProfileBottomSheet.show(context),
+          ),
         ],
       ),
     );
@@ -590,43 +617,59 @@ class _QuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    const spacing = 12.0;
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        mainAxisExtent: 112,
-      ),
-      itemCount: _actions.length,
-      itemBuilder: (context, index) {
-        final action = _actions[index];
-        return AppCard(
-          onTap: () => context.push(action.route),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final crossAxisCount = width >= 720
+            ? 4
+            : width >= 440
+            ? 3
+            : 2;
+        final itemWidth =
+            (width - spacing * (crossAxisCount - 1)) / crossAxisCount;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: _actions
+              .map(
+                (action) => SizedBox(
+                  width: itemWidth,
+                  height: 112,
+                  child: AppCard(
+                    onTap: () => context.push(action.route),
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            action.icon,
+                            color: AppColors.accent,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          action.label,
+                          style: AppTextStyles.caption.copyWith(color: fg),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Icon(action.icon, color: AppColors.accent, size: 22),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                action.label,
-                style: AppTextStyles.caption.copyWith(color: fg),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-              ),
-            ],
-          ),
+              )
+              .toList(),
         );
       },
     );

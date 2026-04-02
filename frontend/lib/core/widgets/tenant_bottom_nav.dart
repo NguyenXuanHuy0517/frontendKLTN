@@ -16,7 +16,6 @@ class TenantBottomNav extends StatelessWidget {
     '/tenant/issues',
     '/tenant/services',
     '/tenant/chatbot',
-    '/tenant/profile',
   ];
 
   @override
@@ -68,11 +67,6 @@ class TenantBottomNav extends StatelessWidget {
             icon: Icon(Icons.chat_bubble_outline),
             activeIcon: Icon(Icons.chat_bubble_rounded),
             label: 'Chatbot',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            activeIcon: Icon(Icons.person_rounded),
-            label: 'Hồ sơ',
           ),
         ],
       ),

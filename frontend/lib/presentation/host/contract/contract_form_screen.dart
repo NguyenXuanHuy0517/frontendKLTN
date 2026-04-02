@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/currency_utils.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../data/models/contract_invitation_model.dart';
+import '../../../data/models/room_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/contract_provider.dart';
-import '../../../providers/deposit_provider.dart';
 import '../../../providers/room_provider.dart';
-import '../../../providers/tenant_provider.dart';
 
 class ContractFormScreen extends StatefulWidget {
   const ContractFormScreen({super.key});
@@ -27,9 +30,7 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
   final _waterCtrl = TextEditingController();
   final _penaltyCtrl = TextEditingController();
 
-  int? _selectedTenantId;
   int? _selectedRoomId;
-  int? _selectedDepositId;
   DateTime? _startDate;
   DateTime? _endDate;
   bool _loading = false;
@@ -50,75 +51,63 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
   }
 
   Future<void> _loadData() async {
-    final authProvider = context.read<AuthProvider>();
-    final tenantProvider = context.read<TenantProvider>();
-    final roomProvider = context.read<RoomProvider>();
-    final depositProvider = context.read<DepositProvider>();
-    final hostId = await authProvider.getUserId();
+    final hostId = await context.read<AuthProvider>().getUserId();
     if (!mounted || hostId == null) return;
 
-    await tenantProvider.fetchTenants(hostId);
-    await roomProvider.fetchRooms(hostId);
-    await depositProvider.fetchDeposits(hostId);
+    await context.read<RoomProvider>().fetchRooms(hostId);
     if (!mounted) return;
 
-    final tenantIds = tenantProvider.tenants
-        .map((tenant) => tenant.userId)
-        .toSet();
-    final roomIds = roomProvider.rooms.map((room) => room.roomId).toSet();
-    final depositIds = depositProvider.deposits
-        .map((deposit) => deposit.depositId)
-        .toSet();
+    final availableRooms = context
+        .read<RoomProvider>()
+        .rooms
+        .where((room) => room.status == 'AVAILABLE')
+        .toList();
 
-    final nextTenantId = tenantIds.contains(_selectedTenantId)
-        ? _selectedTenantId
-        : null;
-    final nextRoomId = roomIds.contains(_selectedRoomId)
-        ? _selectedRoomId
-        : null;
-    final nextDepositId = depositIds.contains(_selectedDepositId)
-        ? _selectedDepositId
-        : null;
+    if (_selectedRoomId == null && availableRooms.length == 1) {
+      _handleRoomChanged(availableRooms.first.roomId);
+      return;
+    }
 
-    if (nextTenantId != _selectedTenantId ||
-        nextRoomId != _selectedRoomId ||
-        nextDepositId != _selectedDepositId) {
-      setState(() {
-        _selectedTenantId = nextTenantId;
-        _selectedRoomId = nextRoomId;
-        _selectedDepositId = nextDepositId;
-      });
+    final roomIds = availableRooms.map((room) => room.roomId).toSet();
+    if (_selectedRoomId != null && !roomIds.contains(_selectedRoomId)) {
+      setState(() => _selectedRoomId = null);
     }
   }
 
-  Future<void> _openCreateTenantFlow() async {
-    final tenantProvider = context.read<TenantProvider>();
-    final previousTenantIds = tenantProvider.tenants
-        .map((tenant) => tenant.userId)
-        .toSet();
+  void _handleRoomChanged(int? roomId) {
+    setState(() => _selectedRoomId = roomId);
 
-    await context.push('/host/tenants/new');
-    if (!mounted) return;
+    if (roomId == null) return;
+    final room = _selectedRoom;
+    if (room == null) return;
 
-    await _loadData();
-    if (!mounted) return;
+    _priceCtrl.text = _formatPrice(room.basePrice);
+    _elecCtrl.text = _formatPrice(room.elecPrice);
+    _waterCtrl.text = _formatPrice(room.waterPrice);
+  }
 
-    final newTenants = tenantProvider.tenants
-        .where((tenant) => !previousTenantIds.contains(tenant.userId))
-        .toList();
-
-    if (newTenants.length == 1) {
-      final createdTenant = newTenants.first;
-      setState(() => _selectedTenantId = createdTenant.userId);
-      _showSuccess(
-        'Da them nguoi thue "${createdTenant.fullName}" va tu dong chon cho hop dong nay.',
-      );
+  String _formatPrice(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
     }
+    return value.toStringAsFixed(2);
+  }
+
+  RoomModel? get _selectedRoom {
+    if (_selectedRoomId == null) return null;
+    final rooms = context.read<RoomProvider>().rooms;
+    for (final room in rooms) {
+      if (room.roomId == _selectedRoomId) {
+        return room;
+      }
+    }
+    return null;
   }
 
   Future<void> _openCreateRoomFlow() async {
-    final roomProvider = context.read<RoomProvider>();
-    final previousRoomIds = roomProvider.rooms
+    final previousRoomIds = context
+        .read<RoomProvider>()
+        .rooms
         .map((room) => room.roomId)
         .toSet();
 
@@ -128,35 +117,40 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
     await _loadData();
     if (!mounted) return;
 
-    final eligibleNewRooms = roomProvider.rooms
+    final newAvailableRooms = context
+        .read<RoomProvider>()
+        .rooms
         .where(
           (room) =>
               !previousRoomIds.contains(room.roomId) &&
-              (room.status == 'AVAILABLE' || room.status == 'DEPOSITED'),
+              room.status == 'AVAILABLE',
         )
         .toList();
 
-    if (eligibleNewRooms.length == 1) {
-      final createdRoom = eligibleNewRooms.first;
-      setState(() => _selectedRoomId = createdRoom.roomId);
-      _showSuccess(
-        'Da them phong "${createdRoom.roomCode}" va tu dong chon cho hop dong nay.',
-      );
+    if (newAvailableRooms.length == 1) {
+      _handleRoomChanged(newAvailableRooms.first.roomId);
+      _showMessage('Da them phong moi va tu dong chon phong trong.');
     }
   }
 
   Future<void> _pickDate(bool isStart) async {
+    final initialDate =
+        (isStart ? _startDate : _endDate) ??
+        DateTime.now().add(const Duration(days: 1));
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+      lastDate: DateTime(2035),
     );
     if (picked == null) return;
 
     setState(() {
       if (isStart) {
         _startDate = picked;
+        if (_endDate != null && _endDate!.isBefore(picked)) {
+          _endDate = picked;
+        }
       } else {
         _endDate = picked;
       }
@@ -165,67 +159,190 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedTenantId == null) {
-      _showError('Vui long chon nguoi thue');
-      return;
-    }
     if (_selectedRoomId == null) {
-      _showError('Vui long chon phong');
+      _showMessage('Vui long chon phong trong', isError: true);
       return;
     }
     if (_startDate == null || _endDate == null) {
-      _showError('Vui long chon ngay bat dau va ket thuc');
+      _showMessage(
+        'Vui long chon ngay bat dau va ngay ket thuc',
+        isError: true,
+      );
       return;
     }
 
     setState(() => _loading = true);
 
-    final data = {
-      'tenantId': _selectedTenantId,
+    final invitation = await context.read<ContractProvider>().createInvitation({
       'roomId': _selectedRoomId,
-      'depositId': _selectedDepositId,
       'startDate': _startDate!.toIso8601String().split('T')[0],
       'endDate': _endDate!.toIso8601String().split('T')[0],
       'actualRentPrice': double.tryParse(_priceCtrl.text) ?? 0,
-      'elecPriceOverride': _elecCtrl.text.isNotEmpty
-          ? double.tryParse(_elecCtrl.text)
-          : null,
-      'waterPriceOverride': _waterCtrl.text.isNotEmpty
-          ? double.tryParse(_waterCtrl.text)
-          : null,
+      'elecPriceOverride': double.tryParse(_elecCtrl.text),
+      'waterPriceOverride': double.tryParse(_waterCtrl.text),
       'penaltyTerms': _penaltyCtrl.text.trim(),
-    };
-
-    final provider = context.read<ContractProvider>();
-    final ok = await provider.createContract(data);
+    });
 
     if (!mounted) return;
     setState(() => _loading = false);
 
-    if (ok) {
-      _showSuccess('Tao hop dong thanh cong');
-      Navigator.of(context).pop();
-    } else {
-      _showError(provider.error ?? 'Thao tac that bai');
+    if (invitation == null) {
+      _showMessage(
+        context.read<ContractProvider>().error ?? 'Tao ma thue that bai',
+        isError: true,
+      );
+      return;
+    }
+
+    await _showInvitationSheet(invitation);
+    if (mounted) {
+      context.pop();
     }
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+  Future<void> _showInvitationSheet(ContractInvitationModel invitation) async {
+    final room = _selectedRoom;
+    final effectiveElec = invitation.elecPriceOverride ?? room?.elecPrice ?? 0;
+    final effectiveWater =
+        invitation.waterPriceOverride ?? room?.waterPrice ?? 0;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+        final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+        final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ma thue da san sang',
+                    style: AppTextStyles.h3.copyWith(color: fg),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Gui ma nay cho nguoi thue. Ma co hieu luc den ${AppDateUtils.formatDateTime(invitation.expiresAt)}.',
+                    style: AppTextStyles.bodySmall.copyWith(color: subtext),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.accent.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: SelectableText(
+                      invitation.inviteCode,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  AppCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _PreviewRow(
+                          label: 'Phong',
+                          value:
+                              '${invitation.roomCode} - ${invitation.areaName}',
+                        ),
+                        _PreviewRow(
+                          label: 'Ngay thue',
+                          value:
+                              '${AppDateUtils.formatDate(invitation.startDate)} - ${AppDateUtils.formatDate(invitation.endDate)}',
+                        ),
+                        _PreviewRow(
+                          label: 'Gia phong',
+                          value: CurrencyUtils.format(
+                            invitation.actualRentPrice,
+                          ),
+                        ),
+                        _PreviewRow(
+                          label: 'Gia dien',
+                          value: CurrencyUtils.format(effectiveElec),
+                        ),
+                        _PreviewRow(
+                          label: 'Gia nuoc',
+                          value: CurrencyUtils.format(effectiveWater),
+                        ),
+                        if ((invitation.penaltyTerms ?? '').trim().isNotEmpty)
+                          _PreviewRow(
+                            label: 'Dieu khoan',
+                            value: invitation.penaltyTerms!,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppButton(
+                          label: 'Đóng',
+                          onPressed: () => Navigator.of(context).pop(),
+                          variant: AppButtonVariant.outlined,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppButton(
+                          label: 'Sao chép mã',
+                          onPressed: () async {
+                            await Clipboard.setData(
+                              ClipboardData(text: invitation.inviteCode),
+                            );
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Đã sao chép mã thuê'),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
-  void _showSuccess(String message) {
+  void _showMessage(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: AppColors.success,
+        backgroundColor: isError ? AppColors.error : AppColors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -238,22 +355,13 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
     final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
     final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
     final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
-    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
     final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-
-    final tenants = context.watch<TenantProvider>().tenants;
     final rooms = context
         .watch<RoomProvider>()
         .rooms
-        .where(
-          (room) => room.status == 'AVAILABLE' || room.status == 'DEPOSITED',
-        )
+        .where((room) => room.status == 'AVAILABLE')
         .toList();
-    final deposits = context
-        .watch<DepositProvider>()
-        .deposits
-        .where((deposit) => deposit.status == 'CONFIRMED')
-        .toList();
+    final selectedRoom = _selectedRoom;
 
     return Scaffold(
       backgroundColor: bg,
@@ -264,7 +372,7 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Tao hop dong',
+          'Tao hop dong moi',
           style: AppTextStyles.h3.copyWith(color: fg),
         ),
       ),
@@ -275,44 +383,19 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _DropdownField(
-                label: 'Nguoi thue *',
-                hint: 'Chon nguoi thue',
-                value: _selectedTenantId,
-                items: tenants
-                    .map(
-                      (tenant) => DropdownMenuItem(
-                        value: tenant.userId,
-                        child: Text(
-                          '${tenant.fullName} - ${tenant.phoneNumber}',
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) => setState(() => _selectedTenantId = value),
-                cardColor: cardColor,
-                border: border,
-                subtext: subtext,
-                fg: fg,
+              Text(
+                '1. Chon phong trong',
+                style: AppTextStyles.h3.copyWith(color: fg),
               ),
               const SizedBox(height: 8),
-              if (tenants.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'Ban can tao nguoi thue truoc khi tao hop dong.',
-                    style: AppTextStyles.bodySmall.copyWith(color: subtext),
-                  ),
-                ),
-              _InlineCreateAction(
-                label: '+ Them nguoi thue moi',
-                icon: Icons.person_add_alt_rounded,
-                onPressed: _openCreateTenantFlow,
+              Text(
+                'Chon phong dang AVAILABLE truoc khi nhap dieu khoan hop dong.',
+                style: AppTextStyles.bodySmall.copyWith(color: subtext),
               ),
               const SizedBox(height: 16),
-              _DropdownField(
+              _DropdownField<int>(
                 label: 'Phong *',
-                hint: 'Chon phong',
+                hint: 'Chon phong trong',
                 value: _selectedRoomId,
                 items: rooms
                     .map(
@@ -322,47 +405,57 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
                       ),
                     )
                     .toList(),
-                onChanged: (value) => setState(() => _selectedRoomId = value),
-                cardColor: cardColor,
+                onChanged: _handleRoomChanged,
                 border: border,
-                subtext: subtext,
                 fg: fg,
+                subtext: subtext,
               ),
               const SizedBox(height: 8),
               if (rooms.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'Ban can tao phong trong truoc khi tao hop dong.',
-                    style: AppTextStyles.bodySmall.copyWith(color: subtext),
-                  ),
+                Text(
+                  'Chưa có phòng trống. Tạo phòng mới hoặc đổi trạng thái phòng.',
+                  style: AppTextStyles.bodySmall.copyWith(color: subtext),
                 ),
-              _InlineCreateAction(
-                label: '+ Them phong moi',
-                icon: Icons.add_business_outlined,
+              TextButton.icon(
                 onPressed: _openCreateRoomFlow,
+                icon: const Icon(Icons.add_business_outlined),
+                label: const Text('Thêm phòng mới'),
               ),
-              const SizedBox(height: 16),
-              _DropdownField(
-                label: 'Dat coc lien ket (tuy chon)',
-                hint: 'Chon dat coc',
-                value: _selectedDepositId,
-                items: deposits
-                    .map(
-                      (deposit) => DropdownMenuItem(
-                        value: deposit.depositId,
-                        child: Text(
-                          '${deposit.tenantName} - Phong ${deposit.roomCode}',
+              if (selectedRoom != null) ...[
+                const SizedBox(height: 12),
+                AppCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${selectedRoom.roomCode} - ${selectedRoom.areaName}',
+                        style: AppTextStyles.body.copyWith(
+                          color: fg,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    )
-                    .toList(),
-                onChanged: (value) =>
-                    setState(() => _selectedDepositId = value),
-                cardColor: cardColor,
-                border: border,
-                subtext: subtext,
-                fg: fg,
+                      const SizedBox(height: 8),
+                      _PreviewRow(
+                        label: 'Gia phong mac dinh',
+                        value: CurrencyUtils.format(selectedRoom.basePrice),
+                      ),
+                      _PreviewRow(
+                        label: 'Gia dien mac dinh',
+                        value: CurrencyUtils.format(selectedRoom.elecPrice),
+                      ),
+                      _PreviewRow(
+                        label: 'Gia nuoc mac dinh',
+                        value: CurrencyUtils.format(selectedRoom.waterPrice),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              Text(
+                '2. Cau hinh hop dong',
+                style: AppTextStyles.h3.copyWith(color: fg),
               ),
               const SizedBox(height: 16),
               Row(
@@ -376,9 +469,9 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
                             )
                           : null,
                       onTap: () => _pickDate(true),
-                      isDark: isDark,
-                      subtext: subtext,
+                      border: border,
                       fg: fg,
+                      subtext: subtext,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -389,23 +482,24 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
                           ? AppDateUtils.formatDate(_endDate!.toIso8601String())
                           : null,
                       onTap: () => _pickDate(false),
-                      isDark: isDark,
-                      subtext: subtext,
+                      border: border,
                       fg: fg,
+                      subtext: subtext,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               AppTextField(
-                label: 'Gia thue thuc te (VND/thang) *',
+                label: 'Giá phòng *',
                 hint: '3000000',
                 controller: _priceCtrl,
                 keyboardType: TextInputType.number,
                 prefixIcon: Icons.attach_money_rounded,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Vui long nhap gia thue';
+                  final parsed = double.tryParse(value ?? '');
+                  if (parsed == null || parsed <= 0) {
+                    return 'Vui lòng nhập giá phòng hợp lệ';
                   }
                   return null;
                 },
@@ -415,73 +509,56 @@ class _ContractFormScreenState extends State<ContractFormScreen> {
                 children: [
                   Expanded(
                     child: AppTextField(
-                      label: 'Gia dien rieng (VND/kWh)',
-                      hint: 'De trong = dung gia phong',
+                      label: 'Giá điện',
+                      hint: '3500',
                       controller: _elecCtrl,
                       keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if ((value ?? '').trim().isEmpty) {
+                          return 'Vui lòng nhập giá điện';
+                        }
+                        if (double.tryParse(value!) == null) {
+                          return 'Giá điện không hợp lệ';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: AppTextField(
-                      label: 'Gia nuoc rieng (VND/m3)',
-                      hint: 'De trong = dung gia phong',
+                      label: 'Giá nước',
+                      hint: '15000',
                       controller: _waterCtrl,
                       keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if ((value ?? '').trim().isEmpty) {
+                          return 'Vui lòng nhập giá nước';
+                        }
+                        if (double.tryParse(value!) == null) {
+                          return 'Giá nước không hợp lệ';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               AppTextField(
-                label: 'Dieu khoan phat',
-                hint: 'Phat 1 thang tien thue neu pha hop dong...',
+                label: 'Điều khoản phạt',
+                hint: 'Nếu trả phòng sớm, thông báo trước 30 ngày...',
                 controller: _penaltyCtrl,
-                maxLines: 3,
+                maxLines: 4,
               ),
               const SizedBox(height: 32),
               AppButton(
-                label: 'Tao hop dong',
+                label: 'Tao ma thue',
                 onPressed: _submit,
                 loading: _loading,
               ),
-              const SizedBox(height: 16),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InlineCreateAction extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  const _InlineCreateAction({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 18, color: AppColors.accent),
-        label: Text(
-          label,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.accent,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ),
     );
@@ -494,10 +571,9 @@ class _DropdownField<T> extends StatelessWidget {
   final T? value;
   final List<DropdownMenuItem<T>> items;
   final void Function(T?) onChanged;
-  final Color cardColor;
   final Color border;
-  final Color subtext;
   final Color fg;
+  final Color subtext;
 
   const _DropdownField({
     required this.label,
@@ -505,14 +581,16 @@ class _DropdownField<T> extends StatelessWidget {
     required this.value,
     required this.items,
     required this.onChanged,
-    required this.cardColor,
     required this.border,
-    required this.subtext,
     required this.fg,
+    required this.subtext,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -549,23 +627,23 @@ class _DateField extends StatelessWidget {
   final String label;
   final String? value;
   final VoidCallback onTap;
-  final bool isDark;
-  final Color subtext;
+  final Color border;
   final Color fg;
+  final Color subtext;
 
   const _DateField({
     required this.label,
     required this.value,
     required this.onTap,
-    required this.isDark,
-    required this.subtext,
+    required this.border,
     required this.fg,
+    required this.subtext,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? AppColors.darkCard : AppColors.lightCard;
-    final border = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,6 +675,45 @@ class _DateField extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PreviewRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _PreviewRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = isDark ? AppColors.darkFg : AppColors.lightFg;
+    final subtext = isDark ? AppColors.darkSubtext : AppColors.lightSubtext;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: AppTextStyles.bodySmall.copyWith(color: subtext),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
